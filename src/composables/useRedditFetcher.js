@@ -34,6 +34,7 @@ export function useRedditFetcher() {
   let fetchId = 0
   let abortController = null
   let onTimeFilterChange = null // Callback when time filter changes due to fallback
+  let onNoSuitablePosts = null // Callback when no suitable posts found after all fallbacks
 
   async function fetchPosts(subreddits, sort = 'hot', timeFilter = '', isRetryWithFallback = false) {
     // Skip if already loading (unless this is a fallback retry)
@@ -147,7 +148,25 @@ export function useRedditFetcher() {
           // Retry with next time filter
           await fetchPosts(subreddits, sort, nextFilter, true)
           return
+        } else {
+          // Exhausted all time filters with no results
+          logger.log('fetch', `No suitable posts found for ${subreddits} after all time filters`)
+          if (onNoSuitablePosts) {
+            onNoSuitablePosts(subreddits)
+          }
+          hasMore.value = false
+          return
         }
+      }
+
+      // No posts found for non-top sorts
+      if (newPosts.length === 0 && posts.value.length === 0) {
+        logger.log('fetch', `No suitable posts found for ${subreddits}`)
+        if (onNoSuitablePosts) {
+          onNoSuitablePosts(subreddits)
+        }
+        hasMore.value = false
+        return
       }
 
       if (newPosts.length === 0 && children.length === 0) {
@@ -243,6 +262,10 @@ export function useRedditFetcher() {
     onTimeFilterChange = callback
   }
 
+  function setNoSuitablePostsCallback(callback) {
+    onNoSuitablePosts = callback
+  }
+
   return {
     posts,
     loading,
@@ -254,6 +277,7 @@ export function useRedditFetcher() {
     fetchMore,
     reset,
     cleanupPosts,
-    setTimeFilterChangeCallback
+    setTimeFilterChangeCallback,
+    setNoSuitablePostsCallback
   }
 }

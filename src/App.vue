@@ -63,7 +63,7 @@ const failedPostIds = ref(new Set())
 
 // Composables
 const { settings, reset: resetSettings } = useSettings()
-const { posts, loading, error, hasMore, fetchPosts, fetchMore, setTimeFilterChangeCallback } = useRedditFetcher()
+const { posts, loading, error, hasMore, fetchPosts, fetchMore, setTimeFilterChangeCallback, setNoSuitablePostsCallback } = useRedditFetcher()
 
 // Handle time filter fallback (when no results found, fetcher tries broader range)
 setTimeFilterChangeCallback((newTimeFilter) => {
@@ -75,6 +75,17 @@ setTimeFilterChangeCallback((newTimeFilter) => {
     newSearch = `?t=${newTimeFilter}`
   }
   window.history.replaceState({}, '', newPath + newSearch)
+})
+
+// Handle no suitable posts found - redirect to homepage
+setNoSuitablePostsCallback((failedSubreddits) => {
+  // Don't redirect if already on homepage
+  if (failedSubreddits === DEFAULT_SUBREDDITS) {
+    return
+  }
+
+  alert(`No viewable media found in r/${failedSubreddits}. This subreddit may not have image/video content. Redirecting to homepage.`)
+  window.location.href = '/'
 })
 
 // Auto-next
