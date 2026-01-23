@@ -3,16 +3,15 @@ import { ref, onMounted } from 'vue'
 import { extractMedia } from '../utils/mediaExtractor'
 
 const FEATURED_SUBREDDITS = [
-  { name: 'EarthPorn', description: 'Landscape & nature photography' },
-  { name: 'itookapicture', description: 'Original user photography' },
+  { name: 'EarthPorn', description: 'Landscape & nature' },
+  { name: 'itookapicture', description: 'User photography' },
   { name: 'Art', description: 'Artwork of all kinds' },
-  { name: 'ExposurePorn', description: 'Long exposure photography' },
-  { name: 'SkyPorn', description: 'Sky & weather photography' },
+  { name: 'ExposurePorn', description: 'Long exposure' },
+  { name: 'SkyPorn', description: 'Sky & weather' },
   { name: 'CityPorn', description: 'Urban photography' },
   { name: 'ArchitecturePorn', description: 'Architecture' },
   { name: 'AbandonedPorn', description: 'Abandoned places' },
-  { name: 'spaceporn', description: 'Space & astronomy' },
-  { name: 'CozyPlaces', description: 'Cozy interiors' }
+  { name: 'spaceporn', description: 'Space & astronomy' }
 ]
 
 const subreddits = ref(FEATURED_SUBREDDITS.map(sub => ({
@@ -131,9 +130,9 @@ onMounted(() => {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
-  max-width: 1400px;
+  max-width: 1000px;
   margin: 0 auto;
 }
 
@@ -227,7 +226,7 @@ onMounted(() => {
   font-family: monospace;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .homepage {
     padding: 16px;
   }
@@ -237,8 +236,20 @@ onMounted(() => {
   }
 
   .grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .card-info {
+    padding: 12px;
+  }
+
+  .card-info h2 {
+    font-size: 0.95rem;
+  }
+
+  .card-info p {
+    font-size: 0.8rem;
   }
 }
 </style>
