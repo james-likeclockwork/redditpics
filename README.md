@@ -4,6 +4,13 @@ A TikTok-style media viewer for Reddit. Swipe through images, videos, galleries,
 
 ![Vue 3](https://img.shields.io/badge/Vue-3.4-green) ![Vite](https://img.shields.io/badge/Vite-5-purple) ![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)
 
+<p align="center">
+  <img src="screenshots/desktop.png" width="70%" alt="Desktop view">
+</p>
+<p align="center">
+  <img src="screenshots/mobile.png" width="250" alt="Mobile view">
+</p>
+
 ## Why?
 
 - **No ads** - Just content
