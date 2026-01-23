@@ -34,6 +34,8 @@ export interface RedditPost {
   removed?: boolean
   deleted?: boolean
   url_overridden_by_dest?: string
+  post_hint?: string // 'image', 'hosted:video', 'rich:video', 'link', 'self', etc.
+  thumbnail?: string // URL or 'default', 'self', 'nsfw', 'spoiler'
 
   // Media fields
   preview?: RedditPreview
