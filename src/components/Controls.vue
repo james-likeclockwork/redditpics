@@ -117,9 +117,8 @@ const permalink = computed(() => {
   </button>
 
   <div class="controls" v-show="showInfo">
-    <!-- Top bar -->
+    <!-- Top bar - Post info only (top left) -->
     <div class="top-bar">
-      <!-- Post info (left side) -->
       <div class="post-info">
         <p class="post-title">{{ title }}</p>
         <div class="post-meta">
@@ -139,59 +138,59 @@ const permalink = computed(() => {
           </a>
         </div>
       </div>
+    </div>
 
-      <!-- Right side controls -->
-      <div class="top-bar-right">
-        <!-- Sort selector -->
-        <div class="sort-selector" @mouseleave="closeSortMenu">
-          <button class="sort-btn" @click="toggleSortMenu">
-            {{ sortDisplayLabel }} ▾
-          </button>
-          <div v-if="sortMenuOpen" class="sort-menu">
-            <template v-for="opt in sortOptions" :key="opt.value">
-              <template v-if="opt.hasTime">
-                <button
-                  class="sort-option sort-group-header"
-                  :class="{ active: sort === opt.value }"
-                  @click="selectSort(opt.value, 'day')"
-                >
-                  {{ opt.label }}
-                </button>
-                <button
-                  v-for="time in timeOptions"
-                  :key="`${opt.value}-${time.value}`"
-                  class="sort-option time-option"
-                  :class="{ active: sort === opt.value && timeFilter === time.value }"
-                  @click="selectSort(opt.value, time.value)"
-                >
-                  {{ time.label }}
-                </button>
-              </template>
+    <!-- Bottom bar - Controls (bottom left) -->
+    <div class="bottom-bar">
+      <!-- Sort selector -->
+      <div class="sort-selector" @mouseleave="closeSortMenu">
+        <button class="sort-btn" @click="toggleSortMenu">
+          {{ sortDisplayLabel }} ▾
+        </button>
+        <div v-if="sortMenuOpen" class="sort-menu">
+          <template v-for="opt in sortOptions" :key="opt.value">
+            <template v-if="opt.hasTime">
               <button
-                v-else
-                class="sort-option"
+                class="sort-option sort-group-header"
                 :class="{ active: sort === opt.value }"
-                @click="selectSort(opt.value)"
+                @click="selectSort(opt.value, 'day')"
               >
                 {{ opt.label }}
               </button>
+              <button
+                v-for="time in timeOptions"
+                :key="`${opt.value}-${time.value}`"
+                class="sort-option time-option"
+                :class="{ active: sort === opt.value && timeFilter === time.value }"
+                @click="selectSort(opt.value, time.value)"
+              >
+                {{ time.label }}
+              </button>
             </template>
-          </div>
+            <button
+              v-else
+              class="sort-option"
+              :class="{ active: sort === opt.value }"
+              @click="selectSort(opt.value)"
+            >
+              {{ opt.label }}
+            </button>
+          </template>
         </div>
-
-        <div class="position">
-          {{ currentIndex + 1 }} / {{ totalPosts }}
-        </div>
-        <button class="fullscreen-btn" @click="emit('toggleFullscreen')" :title="isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen (f)'">
-          {{ isFullscreen ? '⤓' : '⤢' }}
-        </button>
-        <button class="settings-btn" @click="emit('openSettings')">
-          ⚙
-        </button>
       </div>
+
+      <div class="position">
+        {{ currentIndex + 1 }} / {{ totalPosts }}
+      </div>
+      <button class="fullscreen-btn" @click="emit('toggleFullscreen')" :title="isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen (f)'">
+        {{ isFullscreen ? '⤓' : '⤢' }}
+      </button>
+      <button class="settings-btn" @click="emit('openSettings')">
+        ⚙
+      </button>
     </div>
 
-    <!-- Side controls -->
+    <!-- Side controls (right side) -->
     <div class="side-controls">
       <button class="nav-zone nav-prev" @click="emit('prev')">
         <span class="nav-icon">↑</span>
@@ -244,24 +243,31 @@ const permalink = computed(() => {
   pointer-events: auto;
 }
 
+/* Top bar - post info at top left */
 .top-bar {
   position: absolute;
-  bottom: 0;
+  top: 0;
   left: 0;
   right: 0;
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  align-items: flex-start;
   padding: 16px;
-  padding-left: 70px;
   padding-right: 80px;
-  background: linear-gradient(transparent 10%, rgba(0, 0, 0, 0.8));
+  background: linear-gradient(rgba(0, 0, 0, 0.8), transparent 90%);
 }
 
-.top-bar-right {
+/* Bottom bar - controls at bottom left */
+.bottom-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
   display: flex;
   align-items: center;
-  flex-shrink: 0;
+  padding: 16px;
+  padding-left: 70px;
+  padding-right: 16px;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.6), transparent);
+  border-radius: 0 16px 0 0;
 }
 
 .position {
@@ -273,8 +279,8 @@ const permalink = computed(() => {
 .sort-selector {
   position: relative;
   margin-right: 16px;
-  padding-top: 8px;
-  margin-top: -8px;
+  padding-bottom: 8px;
+  margin-bottom: -8px;
 }
 
 .sort-btn {
@@ -360,7 +366,7 @@ const permalink = computed(() => {
 
 .side-controls {
   position: absolute;
-  left: 16px;
+  right: 16px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
