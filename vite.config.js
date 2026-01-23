@@ -18,6 +18,14 @@ export default defineConfig({
         target: 'https://api.redgifs.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/redgifs/, '')
+      },
+      '/media/redgifs': {
+        target: 'https://media.redgifs.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/media\/redgifs/, ''),
+        headers: {
+          'Referer': 'https://www.redgifs.com/'
+        }
       }
     }
   }

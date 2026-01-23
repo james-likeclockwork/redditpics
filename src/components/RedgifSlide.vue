@@ -43,6 +43,12 @@ const loading = ref(true)
 const error = ref(null)
 const videoRef = ref(null)
 
+// Rewrite Redgifs media URLs to go through our proxy (avoids CORS issues)
+function proxyRedgifsUrl(url) {
+  if (!url) return url
+  return url.replace('https://media.redgifs.com/', '/media/redgifs/')
+}
+
 async function fetchRedgifUrl() {
   loading.value = true
   error.value = null
@@ -80,7 +86,7 @@ async function fetchRedgifUrl() {
       if (!isValidRedgifsGifResponse(retryData)) {
         throw new Error('Invalid response from Redgifs API')
       }
-      videoUrl.value = retryData.gif.urls.hd || retryData.gif.urls.sd
+      videoUrl.value = proxyRedgifsUrl(retryData.gif.urls.hd || retryData.gif.urls.sd)
     } else {
       if (!gifRes.ok) throw new Error('Failed to fetch gif')
       const gifData = await gifRes.json()
@@ -91,8 +97,8 @@ async function fetchRedgifUrl() {
         throw new Error('Invalid response from Redgifs API')
       }
 
-      // Get HD URL
-      videoUrl.value = gifData.gif.urls.hd || gifData.gif.urls.sd
+      // Get HD URL (proxied to avoid CORS)
+      videoUrl.value = proxyRedgifsUrl(gifData.gif.urls.hd || gifData.gif.urls.sd)
     }
 
     if (!videoUrl.value) throw new Error('No video URL found')
