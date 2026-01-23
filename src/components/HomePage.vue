@@ -108,13 +108,15 @@ onMounted(() => {
   background: #0a0a0a;
   color: #fff;
   padding: 20px;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .header {
   text-align: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
 .header h1 {
@@ -135,32 +137,38 @@ onMounted(() => {
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
   gap: 12px;
-  max-width: 700px;
+  max-width: 900px;
   width: 100%;
   margin: 0 auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .card {
-  display: block;
+  display: flex;
+  flex-direction: column;
   background: #1a1a1a;
   border-radius: 12px;
   overflow: hidden;
   text-decoration: none;
   color: inherit;
   transition: transform 0.2s, box-shadow 0.2s;
+  min-height: 0;
 }
 
 .card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .card-image {
-  aspect-ratio: 4 / 3;
+  flex: 1;
   background: #252525;
   position: relative;
   overflow: hidden;
+  min-height: 0;
 }
 
 .card-image img {
@@ -219,9 +227,10 @@ onMounted(() => {
 
 .footer {
   text-align: center;
-  margin-top: 16px;
+  margin-top: 12px;
   color: rgba(255, 255, 255, 0.4);
   font-size: 0.9rem;
+  flex-shrink: 0;
 }
 
 .footer code {
@@ -234,6 +243,8 @@ onMounted(() => {
 @media (max-width: 768px) {
   .homepage {
     padding: 16px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .header h1 {
@@ -242,7 +253,14 @@ onMounted(() => {
 
   .grid {
     grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: auto;
     gap: 10px;
+    flex: none;
+  }
+
+  .card-image {
+    aspect-ratio: 4 / 3;
+    flex: none;
   }
 
   .card-info {
