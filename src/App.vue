@@ -49,7 +49,19 @@ const failedPostIds = ref(new Set())
 
 // Composables
 const { settings, reset: resetSettings } = useSettings()
-const { posts, loading, error, hasMore, fetchPosts, fetchMore } = useRedditFetcher()
+const { posts, loading, error, hasMore, fetchPosts, fetchMore, setTimeFilterChangeCallback } = useRedditFetcher()
+
+// Handle time filter fallback (when no results found, fetcher tries broader range)
+setTimeFilterChangeCallback((newTimeFilter) => {
+  currentTimeFilter.value = newTimeFilter
+  // Update URL to reflect the new time filter
+  let newPath = `/r/${subreddits}/${currentSort.value}`
+  let newSearch = ''
+  if (newTimeFilter && (currentSort.value === 'top' || currentSort.value === 'controversial')) {
+    newSearch = `?t=${newTimeFilter}`
+  }
+  window.history.replaceState({}, '', newPath + newSearch)
+})
 
 // Auto-next
 const autoNext = useAutoNext(() => {

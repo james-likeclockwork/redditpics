@@ -8,6 +8,17 @@ const FETCH_TIMEOUT = 15000 // 15 second timeout
 const MAX_POSTS = 500 // Maximum posts to keep in memory
 const CLEANUP_BUFFER = 100 // Posts to keep around current index
 
+// Time filter fallback order for "top" sort
+const TIME_FILTER_ORDER = ['hour', 'day', 'week', 'month', 'year', 'all']
+
+function getNextTimeFilter(currentFilter) {
+  const currentIndex = TIME_FILTER_ORDER.indexOf(currentFilter || 'day')
+  if (currentIndex === -1 || currentIndex >= TIME_FILTER_ORDER.length - 1) {
+    return null // No more fallbacks
+  }
+  return TIME_FILTER_ORDER[currentIndex + 1]
+}
+
 export function useRedditFetcher() {
   const posts = ref([])
   const loading = ref(false)
@@ -15,25 +26,28 @@ export function useRedditFetcher() {
   const hasMore = ref(true)
   const after = ref(null)
   const indexOffset = ref(0) // Tracks how many posts were removed from the start
+  const effectiveTimeFilter = ref('') // Tracks actual time filter used (may differ due to fallback)
 
   let currentSubreddits = ''
   let currentSort = 'hot'
   let currentTimeFilter = ''
   let fetchId = 0
   let abortController = null
+  let onTimeFilterChange = null // Callback when time filter changes due to fallback
 
-  async function fetchPosts(subreddits, sort = 'hot', timeFilter = '') {
-    // Skip if already loading
-    if (loading.value) return
+  async function fetchPosts(subreddits, sort = 'hot', timeFilter = '', isRetryWithFallback = false) {
+    // Skip if already loading (unless this is a fallback retry)
+    if (loading.value && !isRetryWithFallback) return
 
-    // Reset if params changed
-    if (subreddits !== currentSubreddits || sort !== currentSort || timeFilter !== currentTimeFilter) {
+    // Reset if params changed (not for fallback retries)
+    if (!isRetryWithFallback && (subreddits !== currentSubreddits || sort !== currentSort || timeFilter !== currentTimeFilter)) {
       posts.value = []
       after.value = null
       hasMore.value = true
       currentSubreddits = subreddits
       currentSort = sort
       currentTimeFilter = timeFilter
+      effectiveTimeFilter.value = timeFilter
     }
 
     if (!hasMore.value) return
@@ -48,12 +62,15 @@ export function useRedditFetcher() {
     error.value = null
     const thisFetchId = ++fetchId
 
+    // Use effective time filter for the URL (may be different from requested due to fallback)
+    const activeTimeFilter = isRetryWithFallback ? effectiveTimeFilter.value : timeFilter
+
     let url = `/api/reddit/r/${subreddits}/${sort}.json?limit=100&raw_json=1`
     if (after.value) {
       url += `&after=${after.value}`
     }
-    if (timeFilter && (sort === 'top' || sort === 'controversial')) {
-      url += `&t=${timeFilter}`
+    if (activeTimeFilter && (sort === 'top' || sort === 'controversial')) {
+      url += `&t=${activeTimeFilter}`
     }
 
     try {
@@ -108,15 +125,35 @@ export function useRedditFetcher() {
 
       const children = data?.data?.children || []
 
-      if (children.length === 0) {
-        hasMore.value = false
-        return
-      }
-
       // Extract media from posts
       const newPosts = children
         .map(child => extractMedia(child))
         .filter(Boolean)
+
+      // If no results and using "top" sort, try next time range
+      if (newPosts.length === 0 && posts.value.length === 0 && sort === 'top') {
+        const nextFilter = getNextTimeFilter(activeTimeFilter)
+        if (nextFilter) {
+          logger.log('fetch', `No results for top/${activeTimeFilter}, trying ${nextFilter}`)
+          effectiveTimeFilter.value = nextFilter
+          currentTimeFilter = nextFilter
+          loading.value = false // Reset so fetchPosts can run again
+
+          // Notify callback about filter change
+          if (onTimeFilterChange) {
+            onTimeFilterChange(nextFilter)
+          }
+
+          // Retry with next time filter
+          await fetchPosts(subreddits, sort, nextFilter, true)
+          return
+        }
+      }
+
+      if (newPosts.length === 0 && children.length === 0) {
+        hasMore.value = false
+        return
+      }
 
       posts.value = [...posts.value, ...newPosts]
       after.value = data?.data?.after || null
@@ -202,15 +239,21 @@ export function useRedditFetcher() {
     return currentIndex
   }
 
+  function setTimeFilterChangeCallback(callback) {
+    onTimeFilterChange = callback
+  }
+
   return {
     posts,
     loading,
     error,
     hasMore,
     indexOffset,
+    effectiveTimeFilter,
     fetchPosts,
     fetchMore,
     reset,
-    cleanupPosts
+    cleanupPosts,
+    setTimeFilterChangeCallback
   }
 }
