@@ -58,6 +58,18 @@ export function extractMedia(post: { data?: RedditPost } | RedditPost): MediaIte
   const url = data.url || ''
   const domain = data.domain || ''
 
+  // Skip external video sites we can't embed (YouTube, Vimeo, TikTok, etc.)
+  const externalVideoDomains = [
+    'youtube.com', 'youtu.be', 'www.youtube.com', 'm.youtube.com',
+    'vimeo.com', 'www.vimeo.com',
+    'tiktok.com', 'www.tiktok.com', 'vm.tiktok.com',
+    'twitch.tv', 'www.twitch.tv', 'clips.twitch.tv',
+    'streamable.com', 'www.streamable.com'
+  ]
+  if (externalVideoDomains.some(d => domain.includes(d))) {
+    return null
+  }
+
   // Reddit Gallery
   if (data.is_gallery && data.gallery_data && data.media_metadata) {
     const items = data.gallery_data.items || []
@@ -305,7 +317,8 @@ export function extractMedia(post: { data?: RedditPost } | RedditPost): MediaIte
 
     // For source images, be more selective
     if (preview.source?.url) {
-      const isActualImage = postHint === 'image' || postHint === 'hosted:video' || postHint === 'rich:video'
+      // Note: 'rich:video' is for external embeds (YouTube etc.) - don't treat as actual image
+      const isActualImage = postHint === 'image' || postHint === 'hosted:video'
       const isLargeEnough = (preview.source.width || 0) >= 400 && (preview.source.height || 0) >= 400
       const isExternalLink = (postHint === 'link' || postHint === '') && !isImageUrl(url) && !isVideoUrl(url)
 
