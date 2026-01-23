@@ -11,6 +11,20 @@ import { useAutoNext } from './composables/useAutoNext.js'
 import { logger } from './utils/logger.js'
 import { validateSubreddits, validateSort, validateTimeFilter } from './utils/validators'
 
+// Default subreddits for homepage - curated SFW art & photography
+const DEFAULT_SUBREDDITS = [
+  'EarthPorn',      // Landscape & nature photography
+  'itookapicture',  // Original user photography
+  'Art',            // Artwork of all kinds
+  'ExposurePorn',   // Long exposure photography
+  'SkyPorn',        // Sky & weather photography
+  'CityPorn',       // Urban photography
+  'ArchitecturePorn', // Architecture
+  'AbandonedPorn',  // Abandoned places
+  'spaceporn',      // Space & astronomy
+  'CozyPlaces'      // Cozy interiors
+].join('+')
+
 // URL parsing with input validation
 function parseUrl() {
   const path = window.location.pathname
@@ -21,14 +35,14 @@ function parseUrl() {
 
   if (!match) {
     return {
-      subreddits: 'pics',
+      subreddits: DEFAULT_SUBREDDITS,
       sort: 'hot',
       timeFilter: ''
     }
   }
 
   // Validate all inputs
-  const subreddits = validateSubreddits(match[1]) || 'pics'
+  const subreddits = validateSubreddits(match[1]) || DEFAULT_SUBREDDITS
   const sort = validateSort(match[2])
   const timeFilter = validateTimeFilter(search.get('t'))
 
