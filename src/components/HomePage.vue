@@ -237,28 +237,32 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .homepage {
+    height: auto;
+    min-height: 100vh;
     padding: 16px;
+    overflow: auto;
   }
 
   .header h1 {
-    font-size: 1.8rem;
+    font-size: 1.6rem;
   }
 
   .grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: 10px;
+    flex: none;
   }
 
   .card-info {
-    padding: 12px;
+    padding: 10px;
   }
 
   .card-info h2 {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
   }
 
   .card-info p {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
   }
 }
 </style>
