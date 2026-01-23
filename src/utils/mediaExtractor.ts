@@ -300,13 +300,13 @@ export function extractMedia(post: { data?: RedditPost } | RedditPost): MediaIte
     }
   }
 
-  // Reddit preview images (fallback) - but only for actual image posts
-  // Skip if it's just a small thumbnail for an external link
+  // Reddit preview images (fallback) - only for posts Reddit identifies as images
+  // Skip article links that just have preview thumbnails
   if (data.preview?.images?.[0]) {
     const preview = data.preview.images[0]
     const postHint = data.post_hint || ''
 
-    // Check for video variant first - these are always valid
+    // Check for video variant first - these are valid
     if (preview.variants?.mp4?.source?.url) {
       return {
         type: 'video',
@@ -315,27 +315,15 @@ export function extractMedia(post: { data?: RedditPost } | RedditPost): MediaIte
       }
     }
 
-    // For source images, be more selective
-    if (preview.source?.url) {
-      // Note: 'rich:video' is for external embeds (YouTube etc.) - don't treat as actual image
-      const isActualImage = postHint === 'image' || postHint === 'hosted:video'
-      const isLargeEnough = (preview.source.width || 0) >= 400 && (preview.source.height || 0) >= 400
-      const isExternalLink = (postHint === 'link' || postHint === '') && !isImageUrl(url) && !isVideoUrl(url)
-
-      // Skip small thumbnails from external link posts
-      if (isExternalLink && !isLargeEnough) {
-        return null
-      }
-
-      // Accept if it's tagged as an image or if it's large enough to be real content
-      if (isActualImage || isLargeEnough) {
-        return {
-          type: 'image',
-          url: unescapeHtml(preview.source.url),
-          width: preview.source.width,
-          height: preview.source.height,
-          post: data
-        }
+    // Only use preview source if Reddit explicitly identifies this as an image post
+    // Don't show article/link thumbnails even if they're large
+    if (preview.source?.url && postHint === 'image') {
+      return {
+        type: 'image',
+        url: unescapeHtml(preview.source.url),
+        width: preview.source.width,
+        height: preview.source.height,
+        post: data
       }
     }
   }

@@ -329,10 +329,11 @@ describe('extractMedia', () => {
   })
 
   describe('preview fallback', () => {
-    it('uses preview image when no direct URL', () => {
+    it('uses preview image when post_hint is image', () => {
       const post = createPost({
-        url: 'https://example.com/article',
+        url: 'https://example.com/some-image',
         domain: 'example.com',
+        post_hint: 'image',
         preview: {
           enabled: true,
           images: [
@@ -352,6 +353,30 @@ describe('extractMedia', () => {
       expect(result?.type).toBe('image')
       // Note: HTML entities should be unescaped
       expect(result?.url).toBe('https://preview.redd.it/abc123.jpg?width=1920&format=pjpg')
+    })
+
+    it('skips article links even with large preview', () => {
+      const post = createPost({
+        url: 'https://example.com/article',
+        domain: 'example.com',
+        post_hint: 'link',
+        preview: {
+          enabled: true,
+          images: [
+            {
+              id: 'preview1',
+              source: {
+                url: 'https://preview.redd.it/abc123.jpg?width=1920&format=pjpg',
+                width: 1920,
+                height: 1080
+              },
+              resolutions: []
+            }
+          ]
+        }
+      })
+      const result = extractMedia(post)
+      expect(result).toBeNull()
     })
 
     it('prefers mp4 variant in preview', () => {
