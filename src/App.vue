@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import HomePage from './components/HomePage.vue'
 import MediaViewer from './components/MediaViewer.vue'
 import Controls from './components/Controls.vue'
 import ProgressBar from './components/ProgressBar.vue'
@@ -11,20 +12,6 @@ import { useAutoNext } from './composables/useAutoNext.js'
 import { logger } from './utils/logger.js'
 import { validateSubreddits, validateSort, validateTimeFilter } from './utils/validators'
 
-// Default subreddits for homepage - curated SFW art & photography
-const DEFAULT_SUBREDDITS = [
-  'EarthPorn',      // Landscape & nature photography
-  'itookapicture',  // Original user photography
-  'Art',            // Artwork of all kinds
-  'ExposurePorn',   // Long exposure photography
-  'SkyPorn',        // Sky & weather photography
-  'CityPorn',       // Urban photography
-  'ArchitecturePorn', // Architecture
-  'AbandonedPorn',  // Abandoned places
-  'spaceporn',      // Space & astronomy
-  'CozyPlaces'      // Cozy interiors
-].join('+')
-
 // URL parsing with input validation
 function parseUrl() {
   const path = window.location.pathname
@@ -34,15 +21,25 @@ function parseUrl() {
   const match = path.match(/^\/r\/([^\/]+)(?:\/([^\/]+))?/)
 
   if (!match) {
+    // Homepage - no subreddit specified
     return {
-      subreddits: DEFAULT_SUBREDDITS,
+      subreddits: null,
       sort: 'hot',
       timeFilter: ''
     }
   }
 
   // Validate all inputs
-  const subreddits = validateSubreddits(match[1]) || DEFAULT_SUBREDDITS
+  const subreddits = validateSubreddits(match[1])
+  if (!subreddits) {
+    // Invalid subreddit, treat as homepage
+    return {
+      subreddits: null,
+      sort: 'hot',
+      timeFilter: ''
+    }
+  }
+
   const sort = validateSort(match[2])
   const timeFilter = validateTimeFilter(search.get('t'))
 
@@ -52,6 +49,9 @@ function parseUrl() {
 // State
 const urlParams = parseUrl()
 const subreddits = urlParams.subreddits
+
+// Check if we're on the homepage (no subreddit specified)
+const isHomePage = !subreddits
 const currentSort = ref(urlParams.sort)
 const currentTimeFilter = ref(urlParams.timeFilter)
 const currentIndex = ref(0)
@@ -79,11 +79,6 @@ setTimeFilterChangeCallback((newTimeFilter) => {
 
 // Handle no suitable posts found - redirect to homepage
 setNoSuitablePostsCallback((failedSubreddits) => {
-  // Don't redirect if already on homepage
-  if (failedSubreddits === DEFAULT_SUBREDDITS) {
-    return
-  }
-
   alert(`No viewable media found in r/${failedSubreddits}. This subreddit may not have image/video content. Redirecting to homepage.`)
   window.location.href = '/'
 })
@@ -382,9 +377,11 @@ function handleChangeSort({ sort, timeFilter }) {
   fetchPosts(subreddits, sort, timeFilter)
 }
 
-// Initial fetch
+// Initial fetch (only if not on homepage)
 onMounted(() => {
-  fetchPosts(subreddits, currentSort.value, currentTimeFilter.value)
+  if (subreddits) {
+    fetchPosts(subreddits, currentSort.value, currentTimeFilter.value)
+  }
   window.addEventListener('keydown', handleKeydown)
   document.addEventListener('fullscreenchange', handleFullscreenChange)
 })
@@ -398,8 +395,11 @@ onUnmounted(() => {
 
 <template>
   <div class="app">
+    <!-- Homepage -->
+    <HomePage v-if="isHomePage" />
+
     <!-- Loading state -->
-    <div v-if="loading && posts.length === 0" class="loading-screen">
+    <div v-else-if="loading && posts.length === 0" class="loading-screen">
       <div class="spinner"></div>
       <p>Loading {{ subredditDisplay }}...</p>
     </div>
