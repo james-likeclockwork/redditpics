@@ -4,6 +4,13 @@ A TikTok-style media viewer for Reddit. Swipe through images, videos, galleries,
 
 ![Vue 3](https://img.shields.io/badge/Vue-3.4-green) ![Vite](https://img.shields.io/badge/Vite-5-purple) ![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)
 
+## Why?
+
+- **No ads** - Just content
+- **No tracking** - Self-hosted, no analytics
+- **Customizable** - Tweak slideshow timing, filtering, and behavior
+- **Private** - Runs on your machine, no account needed
+
 ## Features
 
 - **Vertical swipe navigation** - Swipe up/down or use keyboard to browse
