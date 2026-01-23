@@ -103,13 +103,13 @@ onMounted(() => {
 
 <style scoped>
 .homepage {
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
   background: #0a0a0a;
   color: #fff;
   padding: 20px;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .header {
