@@ -20,21 +20,27 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['loaded', 'complete', 'indexChange'])
+const emit = defineEmits(['loaded', 'complete', 'indexChange', 'error'])
 
 const currentIndex = ref(0)
 const loadedCount = ref(0)
 const showNsfw = ref(false)
+const imageErrors = ref(new Set())
 
 const currentItem = computed(() => props.items[currentIndex.value])
 const total = computed(() => props.items.length)
 const isLast = computed(() => currentIndex.value === total.value - 1)
 const shouldBlur = computed(() => props.nsfw && props.nsfwMode === 'blur' && !showNsfw.value)
+const currentImageFailed = computed(() => imageErrors.value.has(currentIndex.value))
 
 function next() {
   if (currentIndex.value < total.value - 1) {
     currentIndex.value++
     emit('indexChange', currentIndex.value)
+    // If next image failed, auto-advance again
+    if (imageErrors.value.has(currentIndex.value)) {
+      setTimeout(() => next(), 100)
+    }
   } else {
     emit('complete')
   }
@@ -44,6 +50,10 @@ function prev() {
   if (currentIndex.value > 0) {
     currentIndex.value--
     emit('indexChange', currentIndex.value)
+    // If prev image failed, auto-advance again
+    if (imageErrors.value.has(currentIndex.value)) {
+      setTimeout(() => prev(), 100)
+    }
   }
 }
 
@@ -61,6 +71,30 @@ function onImageLoad() {
   loadedCount.value++
   if (loadedCount.value === 1) {
     emit('loaded')
+  }
+}
+
+function onImageError(index) {
+  imageErrors.value.add(index)
+  // Force reactivity
+  imageErrors.value = new Set(imageErrors.value)
+
+  // If this is the first image to try loading, emit loaded anyway
+  // so we don't block forever
+  if (loadedCount.value === 0) {
+    loadedCount.value++
+    emit('loaded')
+  }
+
+  // If current image failed, try to auto-advance
+  if (index === currentIndex.value && props.active) {
+    // Try next if available, otherwise emit error
+    if (currentIndex.value < total.value - 1) {
+      setTimeout(() => next(), 100)
+    } else if (imageErrors.value.size === total.value) {
+      // All images failed
+      emit('error')
+    }
   }
 }
 
@@ -86,10 +120,15 @@ defineExpose({ next, prev, goTo, currentIndex })
         v-for="(item, index) in items"
         :key="index"
         :src="item.url"
-        :class="{ active: index === currentIndex, blur: shouldBlur }"
+        :class="{ active: index === currentIndex, blur: shouldBlur, error: imageErrors.has(index) }"
         @load="onImageLoad"
+        @error="onImageError(index)"
         alt=""
       />
+      <!-- Error state for current image -->
+      <div v-if="currentImageFailed" class="image-error">
+        <span>Failed to load image</span>
+      </div>
     </div>
 
     <div
@@ -167,6 +206,22 @@ defineExpose({ next, prev, goTo, currentIndex })
 
 .gallery-container img.blur {
   filter: blur(30px);
+}
+
+.gallery-container img.error {
+  display: none;
+}
+
+.image-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+  color: #ff6b6b;
+  font-size: 14px;
+  z-index: 2;
 }
 
 .nsfw-overlay {

@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import MediaSlide from './MediaSlide.vue'
 import { useSwipe } from '../composables/useSwipe.js'
+import { logger } from '../utils/logger.js'
 
 const props = defineProps({
   posts: {
@@ -45,17 +46,22 @@ const preloadCache = new Set()
 const currentLoaded = ref(false)
 let preloadTimeout = null
 
-function preloadMedia(post) {
+function preloadMedia(post, index) {
   if (!post) return
 
   const key = post.post?.id || post.url
-  if (preloadCache.has(key)) return
+  if (preloadCache.has(key)) {
+    logger.preloadHit(index)
+    return
+  }
   preloadCache.add(key)
 
   if (post.type === 'image' && post.url) {
+    logger.preloadStart(index, post.url)
     const img = new Image()
     img.src = post.url
   } else if (post.type === 'gallery' && post.items) {
+    logger.preloadStart(index, `gallery with ${post.items.length} items`)
     // Preload first 3 images of gallery
     post.items.slice(0, 3).forEach(item => {
       const img = new Image()
@@ -74,13 +80,21 @@ function preloadNearby() {
   for (let i = 1; i <= 5; i++) {
     const nextPost = props.posts[index + i]
     if (nextPost) {
-      preloadMedia(nextPost)
+      preloadMedia(nextPost, index + i)
     }
   }
 }
 
 // Reset loaded state when changing posts and cleanup distant slides
 watch(() => props.currentIndex, (newIndex, oldIndex) => {
+  const delta = Math.abs(newIndex - oldIndex)
+  if (delta > 1) {
+    logger.navJump(oldIndex, newIndex)
+  } else {
+    logger.navTo(newIndex, props.posts.length)
+  }
+  logger.visibleRange(visibleRange.value.start, visibleRange.value.end, newIndex)
+
   currentLoaded.value = false
   if (preloadTimeout) {
     clearTimeout(preloadTimeout)
@@ -219,6 +233,9 @@ onUnmounted(() => {
 
 // Event handlers from slides
 function onMediaLoaded(index) {
+  logger.mediaLoad(index, props.posts[index]?.type)
+  logger.endTimer(`media-${index}`)
+
   // Only process if this is the current slide
   if (index === props.currentIndex) {
     currentLoaded.value = true
@@ -233,6 +250,7 @@ function onMediaEnded(index) {
 }
 
 function onMediaError(index) {
+  logger.mediaError(index, props.posts[index]?.type, 'load failed')
   emit('mediaError', index)
 }
 
@@ -240,7 +258,12 @@ function onGalleryComplete(index) {
   emit('galleryComplete', index)
 }
 
-defineExpose({ next, prev, goToIndex, galleryNext, galleryPrev })
+function seekVideo(seconds) {
+  const currentSlide = slideRefs.value[props.currentIndex]
+  currentSlide?.seekRelative?.(seconds)
+}
+
+defineExpose({ next, prev, goToIndex, galleryNext, galleryPrev, slideRefs, seekVideo })
 </script>
 
 <template>

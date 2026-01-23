@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
+import { ref, watch, onUnmounted, computed } from 'vue'
 
 const props = defineProps({
   url: {
@@ -46,6 +46,14 @@ const isMuted = ref(props.muted)
 const currentTime = ref(0)
 const duration = ref(0)
 const showNsfw = ref(false)
+
+// Sync muted state when prop changes (e.g., from keyboard shortcut)
+watch(() => props.muted, (newVal) => {
+  isMuted.value = newVal
+  if (videoRef.value) {
+    videoRef.value.muted = newVal
+  }
+})
 
 const progress = computed(() => {
   if (duration.value === 0) return 0
@@ -151,8 +159,15 @@ watch(() => props.active, (isActive) => {
   }
 })
 
+function seekRelative(seconds) {
+  if (videoRef.value) {
+    const newTime = videoRef.value.currentTime + seconds
+    videoRef.value.currentTime = Math.max(0, Math.min(videoRef.value.duration || Infinity, newTime))
+  }
+}
+
 // Expose methods for parent
-defineExpose({ play, pause, togglePlay, toggleMute, seek })
+defineExpose({ play, pause, togglePlay, toggleMute, seek, seekRelative })
 
 onUnmounted(() => {
   pause()

@@ -1,6 +1,9 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue'
 import VideoSlide from './VideoSlide.vue'
+import { logger } from '../utils/logger.js'
+import { getRedgifsToken, clearRedgifsToken } from '../services/redgifsAuth'
+import { isValidRedgifsGifResponse } from '../utils/apiValidation'
 
 const props = defineProps({
   id: {
@@ -45,26 +48,59 @@ async function fetchRedgifUrl() {
   error.value = null
 
   try {
-    // First get a temporary token (via proxy)
-    const tokenRes = await fetch('/api/redgifs/v2/auth/temporary')
-    if (!tokenRes.ok) throw new Error('Failed to get token')
-    const tokenData = await tokenRes.json()
-    const token = tokenData.token
+    logger.log('fetch', `[redgif] Fetching ${props.id}`)
+    logger.startTimer(`redgif-${props.id}`)
 
-    // Then fetch the gif data (via proxy)
+    // Get cached token (or fetch new one)
+    logger.startTimer(`redgif-token-${props.id}`)
+    const token = await getRedgifsToken()
+    logger.endTimer(`redgif-token-${props.id}`)
+
+    // Then fetch the gif data (via proxy) with timeout
+    logger.startTimer(`redgif-data-${props.id}`)
     const gifRes = await fetch(`/api/redgifs/v2/gifs/${props.id}`, {
       headers: {
         'Authorization': `Bearer ${token}`
-      }
+      },
+      signal: AbortSignal.timeout(10000)
     })
-    if (!gifRes.ok) throw new Error('Failed to fetch gif')
-    const gifData = await gifRes.json()
 
-    // Get HD URL
-    videoUrl.value = gifData.gif?.urls?.hd || gifData.gif?.urls?.sd
+    // If we get a 401, clear the token and retry once
+    if (gifRes.status === 401) {
+      clearRedgifsToken()
+      const newToken = await getRedgifsToken()
+      const retryRes = await fetch(`/api/redgifs/v2/gifs/${props.id}`, {
+        headers: {
+          'Authorization': `Bearer ${newToken}`
+        },
+        signal: AbortSignal.timeout(10000)
+      })
+      if (!retryRes.ok) throw new Error('Failed to fetch gif after token refresh')
+      const retryData = await retryRes.json()
+      if (!isValidRedgifsGifResponse(retryData)) {
+        throw new Error('Invalid response from Redgifs API')
+      }
+      videoUrl.value = retryData.gif.urls.hd || retryData.gif.urls.sd
+    } else {
+      if (!gifRes.ok) throw new Error('Failed to fetch gif')
+      const gifData = await gifRes.json()
+      logger.endTimer(`redgif-data-${props.id}`)
+
+      // Validate response structure
+      if (!isValidRedgifsGifResponse(gifData)) {
+        throw new Error('Invalid response from Redgifs API')
+      }
+
+      // Get HD URL
+      videoUrl.value = gifData.gif.urls.hd || gifData.gif.urls.sd
+    }
+
     if (!videoUrl.value) throw new Error('No video URL found')
+
+    logger.endTimer(`redgif-${props.id}`, videoUrl.value?.slice(0, 60))
   } catch (e) {
     console.error('Redgif fetch error:', e)
+    logger.log('error', `[redgif] ${props.id} failed:`, e.message)
     error.value = e.message
     emit('error')
   } finally {
@@ -93,7 +129,11 @@ watch(() => props.id, () => {
   fetchRedgifUrl()
 })
 
-defineExpose({ videoRef })
+function seekRelative(seconds) {
+  videoRef.value?.seekRelative?.(seconds)
+}
+
+defineExpose({ videoRef, seekRelative })
 </script>
 
 <template>

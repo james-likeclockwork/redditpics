@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
   post: {
@@ -29,10 +29,62 @@ const props = defineProps({
   isFullscreen: {
     type: Boolean,
     default: false
+  },
+  sort: {
+    type: String,
+    default: 'hot'
+  },
+  timeFilter: {
+    type: String,
+    default: ''
   }
 })
 
-const emit = defineEmits(['prev', 'next', 'togglePlay', 'openSettings', 'toggleControls', 'toggleFullscreen'])
+const emit = defineEmits(['prev', 'next', 'togglePlay', 'openSettings', 'toggleControls', 'toggleFullscreen', 'changeSort'])
+
+const sortMenuOpen = ref(false)
+
+const sortOptions = [
+  { value: 'hot', label: 'Hot' },
+  { value: 'new', label: 'New' },
+  { value: 'rising', label: 'Rising' },
+  { value: 'top', label: 'Top', hasTime: true }
+]
+
+const timeOptions = [
+  { value: 'hour', label: 'Hour' },
+  { value: 'day', label: 'Day' },
+  { value: 'week', label: 'Week' },
+  { value: 'month', label: 'Month' },
+  { value: 'year', label: 'Year' },
+  { value: 'all', label: 'All Time' }
+]
+
+const currentSortOption = computed(() => sortOptions.find(s => s.value === props.sort))
+const currentTimeOption = computed(() => timeOptions.find(t => t.value === props.timeFilter))
+const needsTimeFilter = computed(() => props.sort === 'top' || props.sort === 'controversial')
+
+const sortDisplayLabel = computed(() => {
+  let label = currentSortOption.value?.label || 'Hot'
+  if (needsTimeFilter.value) {
+    const timeLabel = currentTimeOption.value?.label || 'Day'
+    label += ` (${timeLabel})`
+  }
+  return label
+})
+
+function selectSort(sort, time = '') {
+  emit('changeSort', { sort, timeFilter: time })
+  sortMenuOpen.value = false
+}
+
+function toggleSortMenu() {
+  sortMenuOpen.value = !sortMenuOpen.value
+}
+
+function closeSortMenu() {
+  sortMenuOpen.value = false
+}
 
 const title = computed(() => props.post?.title || '')
 const author = computed(() => props.post?.author || '')
@@ -51,25 +103,6 @@ const permalink = computed(() => {
   return null
 })
 
-// Parse and format subreddits display
-const subredditList = computed(() => {
-  return props.subreddits.split('+').filter(Boolean)
-})
-
-const subredditDisplay = computed(() => {
-  const list = subredditList.value
-  const maxShow = 3
-
-  if (list.length <= maxShow) {
-    return 'r/' + list.join('+')
-  }
-
-  const shown = list.slice(0, maxShow).join('+')
-  const remaining = list.length - maxShow
-  return `r/${shown} +${remaining} more`
-})
-
-const subredditCount = computed(() => subredditList.value.length)
 </script>
 
 <template>
@@ -86,19 +119,76 @@ const subredditCount = computed(() => subredditList.value.length)
   <div class="controls" v-show="showInfo">
     <!-- Top bar -->
     <div class="top-bar">
-      <div class="subreddit-info">
-        <span class="subreddit-name" :title="'r/' + subreddits">{{ subredditDisplay }}</span>
-        <span v-if="subredditCount > 3" class="subreddit-count">({{ subredditCount }} subs)</span>
+      <!-- Post info (left side) -->
+      <div class="post-info">
+        <p class="post-title">{{ title }}</p>
+        <div class="post-meta">
+          <span class="author">u/{{ author }}</span>
+          <span class="divider">•</span>
+          <span class="source">r/{{ subreddit }}</span>
+          <span class="divider">•</span>
+          <span class="score">⬆ {{ score }}</span>
+          <a
+            v-if="permalink"
+            :href="permalink"
+            target="_blank"
+            rel="noopener"
+            class="reddit-link"
+          >
+            ↗
+          </a>
+        </div>
       </div>
-      <div class="position">
-        {{ currentIndex + 1 }} / {{ totalPosts }}
+
+      <!-- Right side controls -->
+      <div class="top-bar-right">
+        <!-- Sort selector -->
+        <div class="sort-selector" @mouseleave="closeSortMenu">
+          <button class="sort-btn" @click="toggleSortMenu">
+            {{ sortDisplayLabel }} ▾
+          </button>
+          <div v-if="sortMenuOpen" class="sort-menu">
+            <template v-for="opt in sortOptions" :key="opt.value">
+              <template v-if="opt.hasTime">
+                <button
+                  class="sort-option sort-group-header"
+                  :class="{ active: sort === opt.value }"
+                  @click="selectSort(opt.value, 'day')"
+                >
+                  {{ opt.label }}
+                </button>
+                <button
+                  v-for="time in timeOptions"
+                  :key="`${opt.value}-${time.value}`"
+                  class="sort-option time-option"
+                  :class="{ active: sort === opt.value && timeFilter === time.value }"
+                  @click="selectSort(opt.value, time.value)"
+                >
+                  {{ time.label }}
+                </button>
+              </template>
+              <button
+                v-else
+                class="sort-option"
+                :class="{ active: sort === opt.value }"
+                @click="selectSort(opt.value)"
+              >
+                {{ opt.label }}
+              </button>
+            </template>
+          </div>
+        </div>
+
+        <div class="position">
+          {{ currentIndex + 1 }} / {{ totalPosts }}
+        </div>
+        <button class="fullscreen-btn" @click="emit('toggleFullscreen')" :title="isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen (f)'">
+          {{ isFullscreen ? '⤓' : '⤢' }}
+        </button>
+        <button class="settings-btn" @click="emit('openSettings')">
+          ⚙
+        </button>
       </div>
-      <button class="fullscreen-btn" @click="emit('toggleFullscreen')" :title="isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen (f)'">
-        {{ isFullscreen ? '⤓' : '⤢' }}
-      </button>
-      <button class="settings-btn" @click="emit('openSettings')">
-        ⚙
-      </button>
     </div>
 
     <!-- Side controls -->
@@ -112,29 +202,6 @@ const subredditCount = computed(() => subredditList.value.length)
       <button class="nav-zone nav-next" @click="emit('next')">
         <span class="nav-icon">↓</span>
       </button>
-    </div>
-
-    <!-- Bottom bar -->
-    <div class="bottom-bar">
-      <div class="post-info">
-        <p class="post-title">{{ title }}</p>
-        <div class="post-meta">
-          <span class="author">u/{{ author }}</span>
-          <span class="divider">•</span>
-          <span class="source">r/{{ subreddit }}</span>
-          <span class="divider">•</span>
-          <span class="score">⬆ {{ score }}</span>
-        </div>
-      </div>
-      <a
-        v-if="permalink"
-        :href="permalink"
-        target="_blank"
-        rel="noopener"
-        class="reddit-link"
-      >
-        ↗
-      </a>
     </div>
   </div>
 </template>
@@ -183,38 +250,91 @@ const subredditCount = computed(() => subredditList.value.length)
   left: 0;
   right: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
   padding: 16px;
   padding-left: 70px;
-  background: linear-gradient(rgba(0, 0, 0, 0.7), transparent);
+  padding-right: 80px;
+  background: linear-gradient(rgba(0, 0, 0, 0.8), transparent 90%);
 }
 
-.subreddit-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.subreddit-name {
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: inline-block;
-  max-width: 100%;
-}
-
-.subreddit-count {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 12px;
-  margin-left: 8px;
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .position {
   color: rgba(255, 255, 255, 0.8);
   font-size: 14px;
   margin-right: 16px;
+}
+
+.sort-selector {
+  position: relative;
+  margin-right: 16px;
+  padding-bottom: 8px;
+  margin-bottom: -8px;
+}
+
+.sort-btn {
+  padding: 6px 12px;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sort-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.sort-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 140px;
+  background: rgba(30, 30, 30, 0.95);
+  border-radius: 8px;
+  padding: 4px 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  backdrop-filter: blur(10px);
+}
+
+.sort-group-header {
+  font-weight: 600;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+.sort-option {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sort-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sort-option.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.sort-option.time-option {
+  padding-left: 24px;
 }
 
 .fullscreen-btn,
@@ -282,28 +402,17 @@ const subredditCount = computed(() => subredditList.value.length)
   background: rgba(255, 255, 255, 0.25);
 }
 
-.bottom-bar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: flex-end;
-  padding: 16px;
-  padding-right: 80px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
-}
-
 .post-info {
   flex: 1;
   min-width: 0;
+  max-width: 60%;
 }
 
 .post-title {
   color: #fff;
   font-size: 14px;
   line-height: 1.4;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -313,7 +422,8 @@ const subredditCount = computed(() => subredditList.value.length)
 .post-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
   color: rgba(255, 255, 255, 0.7);
   font-size: 12px;
 }
@@ -323,19 +433,12 @@ const subredditCount = computed(() => subredditList.value.length)
 }
 
 .reddit-link {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-  color: #fff;
-  font-size: 18px;
+  color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
+  margin-left: 4px;
 }
 
 .reddit-link:hover {
-  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
 }
 </style>

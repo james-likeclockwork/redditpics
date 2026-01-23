@@ -3,42 +3,47 @@
  * Returns an object with type and url(s)
  */
 
-function unescapeHtml(str) {
-  if (!str) return str
-  return str
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
+import type { RedditPost } from '../types/reddit'
+import type { MediaItem, GalleryItem } from '../types/media'
+
+/**
+ * Safely unescape HTML entities using DOMParser
+ * This is secure against XSS and handles all HTML entities including double-encoded ones
+ */
+export function unescapeHtml(str: string | null | undefined): string {
+  if (!str) return str ?? ''
+
+  // Use DOMParser for secure HTML entity decoding
+  const doc = new DOMParser().parseFromString(str, 'text/html')
+  return doc.documentElement.textContent ?? ''
 }
 
-function getExtension(url) {
+function getExtension(url: string): string {
   try {
     const pathname = new URL(url).pathname
-    const ext = pathname.split('.').pop().toLowerCase()
+    const ext = pathname.split('.').pop()?.toLowerCase() ?? ''
     return ext
   } catch {
     return ''
   }
 }
 
-function isImageUrl(url) {
+function isImageUrl(url: string): boolean {
   const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp']
   return imageExts.includes(getExtension(url))
 }
 
-function isVideoUrl(url) {
+function isVideoUrl(url: string): boolean {
   const videoExts = ['mp4', 'webm', 'mov']
   return videoExts.includes(getExtension(url))
 }
 
-function isGifvUrl(url) {
+function isGifvUrl(url: string): boolean {
   return getExtension(url) === 'gifv'
 }
 
-export function extractMedia(post) {
-  const data = post.data || post
+export function extractMedia(post: { data?: RedditPost } | RedditPost): MediaItem | null {
+  const data: RedditPost = (post as { data?: RedditPost }).data || (post as RedditPost)
 
   // Skip self posts (text only)
   if (data.is_self) {
@@ -56,9 +61,9 @@ export function extractMedia(post) {
   // Reddit Gallery
   if (data.is_gallery && data.gallery_data && data.media_metadata) {
     const items = data.gallery_data.items || []
-    const images = items
-      .map(item => {
-        const meta = data.media_metadata[item.media_id]
+    const images: GalleryItem[] = items
+      .map((item) => {
+        const meta = data.media_metadata?.[item.media_id]
         if (!meta) return null
 
         // Get the best quality source
@@ -71,17 +76,19 @@ export function extractMedia(post) {
             }
           }
           if (meta.e === 'AnimatedImage') {
+            // Prefer gif URL for galleries since GallerySlide uses <img> tags
+            // GIFs auto-animate in img tags and are simpler than mixed video/image handling
             return {
-              url: unescapeHtml(meta.s.mp4 || meta.s.gif),
+              url: unescapeHtml(meta.s.gif || meta.s.mp4),
               width: meta.s.x,
               height: meta.s.y,
-              isVideo: !!meta.s.mp4
+              isVideo: false
             }
           }
         }
         return null
       })
-      .filter(Boolean)
+      .filter((item): item is GalleryItem => item !== null)
 
     if (images.length > 0) {
       return {
@@ -204,8 +211,8 @@ export function extractMedia(post) {
   // Redgifs - check multiple URL patterns and sources
   if (domain.includes('redgifs.com') || url.includes('redgifs.com')) {
     // Try multiple patterns: /watch/, /ifr/, or just the ID at the end
-    const redgifMatch = url.match(/redgifs\.com\/(?:watch|ifr)\/(\w+)/i) ||
-                        url.match(/redgifs\.com\/(\w+)$/i)
+    const redgifMatch =
+      url.match(/redgifs\.com\/(?:watch|ifr)\/(\w+)/i) || url.match(/redgifs\.com\/(\w+)$/i)
     if (redgifMatch) {
       return {
         type: 'redgif',
@@ -252,8 +259,8 @@ export function extractMedia(post) {
   // Check url_overridden_by_dest for redgifs
   const destUrl = data.url_overridden_by_dest || ''
   if (destUrl.includes('redgifs.com')) {
-    const destMatch = destUrl.match(/redgifs\.com\/(?:watch|ifr)\/(\w+)/i) ||
-                      destUrl.match(/redgifs\.com\/(\w+)$/i)
+    const destMatch =
+      destUrl.match(/redgifs\.com\/(?:watch|ifr)\/(\w+)/i) || destUrl.match(/redgifs\.com\/(\w+)$/i)
     if (destMatch) {
       return {
         type: 'redgif',
@@ -310,8 +317,8 @@ export function extractMedia(post) {
   return null
 }
 
-export function extractAllMedia(posts) {
-  return posts
-    .map(post => extractMedia(post))
-    .filter(Boolean)
+export function extractAllMedia(
+  posts: Array<{ data?: RedditPost } | RedditPost>
+): MediaItem[] {
+  return posts.map((post) => extractMedia(post)).filter((item): item is MediaItem => item !== null)
 }

@@ -1,6 +1,8 @@
 import { reactive, watch } from 'vue'
+import { storage } from '../services/storage'
 
-const STORAGE_KEY = 'redditp2-settings'
+const STORAGE_KEY = 'settings'
+const DEBOUNCE_MS = 500
 
 const defaultSettings = {
   autoNext: {
@@ -48,6 +50,22 @@ function deepMerge(target, source) {
   return result
 }
 
+/**
+ * Debounce function to reduce storage writes
+ */
+function debounce(fn, ms) {
+  let timeoutId = null
+  return function (...args) {
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+    }
+    timeoutId = setTimeout(() => {
+      fn.apply(this, args)
+      timeoutId = null
+    }, ms)
+  }
+}
+
 // Singleton instance
 let settingsInstance = null
 
@@ -60,10 +78,9 @@ export function useSettings() {
 
   function load() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY)
+      const stored = storage.get(STORAGE_KEY)
       if (stored) {
-        const parsed = JSON.parse(stored)
-        const merged = deepMerge(defaultSettings, parsed)
+        const merged = deepMerge(defaultSettings, stored)
         Object.assign(settings, merged)
       }
     } catch (e) {
@@ -71,25 +88,28 @@ export function useSettings() {
     }
   }
 
-  function save() {
+  function saveImmediate() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+      storage.set(STORAGE_KEY, settings)
     } catch (e) {
       console.warn('Failed to save settings:', e)
     }
   }
 
+  // Debounced save to reduce storage writes
+  const save = debounce(saveImmediate, DEBOUNCE_MS)
+
   function reset() {
     Object.assign(settings, deepClone(defaultSettings))
-    save()
+    saveImmediate() // Use immediate save for explicit reset
   }
 
   // Load on init
   load()
 
-  // Auto-save on changes
+  // Auto-save on changes (debounced)
   watch(settings, save, { deep: true })
 
-  settingsInstance = { settings, save, load, reset }
+  settingsInstance = { settings, save: saveImmediate, load, reset }
   return settingsInstance
 }

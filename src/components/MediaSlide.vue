@@ -1,9 +1,10 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import ImageSlide from './ImageSlide.vue'
 import VideoSlide from './VideoSlide.vue'
 import GallerySlide from './GallerySlide.vue'
 import RedgifSlide from './RedgifSlide.vue'
+import { logger } from '../utils/logger.js'
 
 const props = defineProps({
   media: {
@@ -28,6 +29,20 @@ const galleryRef = ref(null)
 const mediaType = computed(() => props.media.type)
 const post = computed(() => props.media.post)
 const isNsfw = computed(() => post.value?.over_18 || false)
+
+// Get index from parent for logging (passed via key or we track it)
+const slideIndex = computed(() => props.media.virtualIndex ?? -1)
+
+onMounted(() => {
+  const idx = slideIndex.value
+  const url = props.media.url || props.media.id || props.media.items?.[0]?.url
+  logger.mediaMount(idx, props.media.type, url)
+  logger.startTimer(`media-${idx}`)
+})
+
+onUnmounted(() => {
+  logger.slideUnmount(slideIndex.value)
+})
 
 // Loop videos when auto-next is disabled, otherwise use the loop setting
 const shouldLoop = computed(() => {
@@ -78,6 +93,11 @@ function getGalleryTotal() {
   return props.media.items?.length ?? 0
 }
 
+function seekRelative(seconds) {
+  // For videos (direct or via redgif)
+  videoRef.value?.seekRelative?.(seconds)
+}
+
 // Expose methods for parent control
 defineExpose({
   videoRef,
@@ -86,7 +106,8 @@ defineExpose({
   galleryPrev,
   getGalleryIndex,
   getGalleryTotal,
-  isGallery
+  isGallery,
+  seekRelative
 })
 </script>
 
@@ -131,6 +152,7 @@ defineExpose({
 
     <RedgifSlide
       v-else-if="mediaType === 'redgif'"
+      ref="videoRef"
       :id="media.id"
       :autoplay="settings.video.autoplay"
       :muted="settings.video.muted"

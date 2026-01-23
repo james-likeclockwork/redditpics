@@ -4,11 +4,14 @@ import MediaViewer from './components/MediaViewer.vue'
 import Controls from './components/Controls.vue'
 import ProgressBar from './components/ProgressBar.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
+import ErrorBoundary from './components/ErrorBoundary.vue'
 import { useRedditFetcher } from './composables/useRedditFetcher.js'
 import { useSettings } from './composables/useSettings.js'
 import { useAutoNext } from './composables/useAutoNext.js'
+import { logger } from './utils/logger.js'
+import { validateSubreddits, validateSort, validateTimeFilter } from './utils/validators'
 
-// URL parsing
+// URL parsing with input validation
 function parseUrl() {
   const path = window.location.pathname
   const search = new URLSearchParams(window.location.search)
@@ -24,15 +27,19 @@ function parseUrl() {
     }
   }
 
-  const subreddits = match[1]
-  const sort = match[2] || 'hot'
-  const timeFilter = search.get('t') || ''
+  // Validate all inputs
+  const subreddits = validateSubreddits(match[1]) || 'pics'
+  const sort = validateSort(match[2])
+  const timeFilter = validateTimeFilter(search.get('t'))
 
   return { subreddits, sort, timeFilter }
 }
 
 // State
-const { subreddits, sort, timeFilter } = parseUrl()
+const urlParams = parseUrl()
+const subreddits = urlParams.subreddits
+const currentSort = ref(urlParams.sort)
+const currentTimeFilter = ref(urlParams.timeFilter)
 const currentIndex = ref(0)
 const settingsVisible = ref(false)
 const viewerRef = ref(null)
@@ -53,6 +60,18 @@ const autoNext = useAutoNext(() => {
 
 // Current post (from filtered list)
 const currentPost = computed(() => filteredPosts.value[currentIndex.value]?.post || null)
+
+// Display text for subreddits (truncate if too many)
+const subredditDisplay = computed(() => {
+  const subs = subreddits.split('+')
+  if (subs.length === 1) {
+    return `r/${subs[0]}`
+  }
+  if (subs.length <= 3) {
+    return `r/${subs.join('+')}`
+  }
+  return `${subs.length} subreddits`
+})
 
 // Filter posts based on settings and failed loads
 const filteredPosts = computed(() => {
@@ -76,43 +95,102 @@ const filteredPosts = computed(() => {
 
 // Handle auto-next based on media type
 function handleMediaLoaded(index) {
+  const post = filteredPosts.value[index]
+  logger.log('media', `[${index}] Media loaded, type: ${post?.type}, autoNext: ${settings.autoNext.enabled}, videoMode: ${settings.autoNext.videoMode}`)
+
   if (!settings.autoNext.enabled) return
   if (index !== currentIndex.value) return
-
-  const post = filteredPosts.value[index]
   if (!post) return
 
   if (post.type === 'image') {
+    logger.log('media', `[${index}] Starting image timer: ${settings.autoNext.imageDelay}ms`)
     autoNext.start(settings.autoNext.imageDelay)
   } else if (post.type === 'gallery') {
     if (settings.autoNext.galleryMode === 'fixed') {
+      logger.log('media', `[${index}] Gallery fixed mode, starting timer`)
       autoNext.start(settings.autoNext.imageDelay)
+    } else if (settings.autoNext.galleryMode === 'all') {
+      logger.log('media', `[${index}] Gallery all mode, starting gallery auto-advance`)
+      startGalleryAutoAdvance()
     }
-    // 'all' mode waits for galleryComplete event
-  } else if (post.type === 'video') {
+  } else if (post.type === 'video' || post.type === 'redgif') {
     if (settings.autoNext.videoMode === 'skip') {
+      logger.log('media', `[${index}] Video skip mode, advancing immediately`)
       viewerRef.value?.next()
     } else if (settings.autoNext.videoMode === 'fixed') {
+      logger.log('media', `[${index}] Video fixed mode, starting timer`)
       autoNext.start(settings.autoNext.imageDelay)
+    } else {
+      logger.log('media', `[${index}] Video wait mode, waiting for ended event`)
     }
-    // 'wait' mode waits for video end event
+  }
+}
+
+// Gallery auto-advance for 'all' mode
+let galleryTimer = null
+
+function startGalleryAutoAdvance() {
+  stopGalleryAutoAdvance()
+  galleryTimer = setTimeout(() => {
+    advanceGalleryOrNext()
+  }, settings.autoNext.imageDelay)
+}
+
+function stopGalleryAutoAdvance() {
+  if (galleryTimer) {
+    clearTimeout(galleryTimer)
+    galleryTimer = null
+  }
+}
+
+function advanceGalleryOrNext() {
+  if (!settings.autoNext.enabled) return
+  if (settings.autoNext.galleryMode !== 'all') return
+
+  const post = filteredPosts.value[currentIndex.value]
+  if (post?.type !== 'gallery') return
+
+  // Try to advance within gallery
+  const currentSlide = viewerRef.value?.slideRefs?.[currentIndex.value]
+  if (currentSlide?.isGallery?.()) {
+    const galleryIndex = currentSlide.getGalleryIndex()
+    const galleryTotal = currentSlide.getGalleryTotal()
+
+    if (galleryIndex < galleryTotal - 1) {
+      // More images in gallery - advance and restart timer
+      currentSlide.galleryNext()
+      startGalleryAutoAdvance()
+    } else {
+      // Last image - advance to next post
+      viewerRef.value?.next()
+    }
   }
 }
 
 function handleMediaEnded(index) {
-  if (!settings.autoNext.enabled) return
-  if (index !== currentIndex.value) return
+  const post = filteredPosts.value[index]
+  logger.log('media', `[${index}] Video ended, type: ${post?.type}, videoMode: ${settings.autoNext.videoMode}`)
+
+  if (!settings.autoNext.enabled) {
+    logger.log('media', `[${index}] Auto-next disabled, not advancing`)
+    return
+  }
+  if (index !== currentIndex.value) {
+    logger.log('media', `[${index}] Index mismatch (current: ${currentIndex.value}), not advancing`)
+    return
+  }
   if (settings.autoNext.videoMode === 'wait') {
+    logger.log('nav', `[${index}] Advancing to next (video ended in wait mode)`)
     viewerRef.value?.next()
   }
 }
 
 function handleGalleryComplete(index) {
-  if (!settings.autoNext.enabled) return
   if (index !== currentIndex.value) return
-  if (settings.autoNext.galleryMode === 'all') {
-    viewerRef.value?.next()
-  }
+  // Stop any running gallery timer
+  stopGalleryAutoAdvance()
+  // Always advance to next post when gallery completes (user viewed all items)
+  viewerRef.value?.next()
 }
 
 function handleMediaError(index) {
@@ -137,7 +215,31 @@ function handleMediaError(index) {
 // Watch current index changes
 watch(currentIndex, () => {
   autoNext.stop()
+  stopGalleryAutoAdvance()
 })
+
+// Handle left/right keys based on media type
+function handleLeftKey() {
+  const post = filteredPosts.value[currentIndex.value]
+  if (post?.type === 'video' || post?.type === 'redgif') {
+    seekCurrentVideo(-5)
+  } else {
+    viewerRef.value?.galleryPrev()
+  }
+}
+
+function handleRightKey() {
+  const post = filteredPosts.value[currentIndex.value]
+  if (post?.type === 'video' || post?.type === 'redgif') {
+    seekCurrentVideo(5)
+  } else {
+    viewerRef.value?.galleryNext()
+  }
+}
+
+function seekCurrentVideo(seconds) {
+  viewerRef.value?.seekVideo(seconds)
+}
 
 // Keyboard shortcuts
 function handleKeydown(e) {
@@ -165,12 +267,12 @@ function handleKeydown(e) {
     case 'ArrowLeft':
     case 'a':
       e.preventDefault()
-      viewerRef.value?.galleryPrev()
+      handleLeftKey()
       break
     case 'ArrowRight':
     case 'd':
       e.preventDefault()
-      viewerRef.value?.galleryNext()
+      handleRightKey()
       break
     case ' ':
       e.preventDefault()
@@ -178,6 +280,9 @@ function handleKeydown(e) {
       break
     case 'i':
       settings.display.showInfo = !settings.display.showInfo
+      break
+    case 'm':
+      settings.video.muted = !settings.video.muted
       break
     case 'f':
       toggleFullscreen()
@@ -222,9 +327,27 @@ function toggleControls() {
   settings.display.showInfo = !settings.display.showInfo
 }
 
+function handleChangeSort({ sort, timeFilter }) {
+  currentSort.value = sort
+  currentTimeFilter.value = timeFilter || ''
+  currentIndex.value = 0
+  failedPostIds.value = new Set()
+
+  // Update URL without reloading
+  let newPath = `/r/${subreddits}/${sort}`
+  let newSearch = ''
+  if (timeFilter && (sort === 'top' || sort === 'controversial')) {
+    newSearch = `?t=${timeFilter}`
+  }
+  window.history.pushState({}, '', newPath + newSearch)
+
+  // Refetch with new sort
+  fetchPosts(subreddits, sort, timeFilter)
+}
+
 // Initial fetch
 onMounted(() => {
-  fetchPosts(subreddits, sort, timeFilter)
+  fetchPosts(subreddits, currentSort.value, currentTimeFilter.value)
   window.addEventListener('keydown', handleKeydown)
   document.addEventListener('fullscreenchange', handleFullscreenChange)
 })
@@ -232,6 +355,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  stopGalleryAutoAdvance()
 })
 </script>
 
@@ -240,28 +364,30 @@ onUnmounted(() => {
     <!-- Loading state -->
     <div v-if="loading && posts.length === 0" class="loading-screen">
       <div class="spinner"></div>
-      <p>Loading r/{{ subreddits }}...</p>
+      <p>Loading {{ subredditDisplay }}...</p>
     </div>
 
     <!-- Error state -->
     <div v-else-if="error && posts.length === 0" class="error-screen">
       <p>{{ error }}</p>
-      <button @click="fetchPosts(subreddits, sort, timeFilter)">Retry</button>
+      <button @click="fetchPosts(subreddits, currentSort, currentTimeFilter)">Retry</button>
     </div>
 
     <!-- Main viewer -->
     <template v-else-if="filteredPosts.length > 0">
-      <MediaViewer
-        ref="viewerRef"
-        :posts="filteredPosts"
-        v-model:current-index="currentIndex"
-        :settings="settings"
-        @need-more="fetchMore"
-        @media-loaded="handleMediaLoaded"
-        @media-ended="handleMediaEnded"
-        @media-error="handleMediaError"
-        @gallery-complete="handleGalleryComplete"
-      />
+      <ErrorBoundary>
+        <MediaViewer
+          ref="viewerRef"
+          :posts="filteredPosts"
+          v-model:current-index="currentIndex"
+          :settings="settings"
+          @need-more="fetchMore"
+          @media-loaded="handleMediaLoaded"
+          @media-ended="handleMediaEnded"
+          @media-error="handleMediaError"
+          @gallery-complete="handleGalleryComplete"
+        />
+      </ErrorBoundary>
 
       <ProgressBar
         :progress="autoNext.progress.value"
@@ -276,12 +402,15 @@ onUnmounted(() => {
         :is-playing="settings.autoNext.enabled"
         :show-info="settings.display.showInfo"
         :is-fullscreen="isFullscreen"
+        :sort="currentSort"
+        :time-filter="currentTimeFilter"
         @prev="viewerRef?.prev()"
         @next="viewerRef?.next()"
         @toggle-play="toggleSlideshow"
         @open-settings="settingsVisible = true"
         @toggle-controls="toggleControls"
         @toggle-fullscreen="toggleFullscreen"
+        @change-sort="handleChangeSort"
       />
     </template>
 
