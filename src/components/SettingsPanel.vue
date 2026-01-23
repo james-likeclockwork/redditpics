@@ -1,9 +1,7 @@
 <script setup>
-const props = defineProps({
-  settings: {
-    type: Object,
-    required: true
-  },
+import { useSettings } from '../composables/useSettings.js'
+
+defineProps({
   visible: {
     type: Boolean,
     default: false
@@ -11,6 +9,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'reset'])
+
+// Use the singleton settings directly to avoid prop mutation warnings
+const { settings } = useSettings()
 
 const imageDelayOptions = [
   { value: 3000, label: '3 seconds' },
@@ -35,6 +36,29 @@ const nsfwOptions = [
   { value: 'show', label: 'Show' },
   { value: 'blur', label: 'Blur' },
   { value: 'hide', label: 'Hide' }
+]
+
+const animationTypeOptions = [
+  { value: 'none', label: 'None (instant)' },
+  { value: 'slide', label: 'Slide' },
+  { value: 'fade', label: 'Fade' },
+  { value: 'slide-fade', label: 'Slide + Fade' },
+  { value: 'zoom', label: 'Zoom' }
+]
+
+const animationDurationOptions = [
+  { value: 200, label: 'Fast (200ms)' },
+  { value: 300, label: 'Medium (300ms)' },
+  { value: 400, label: 'Normal (400ms)' },
+  { value: 500, label: 'Slow (500ms)' },
+  { value: 600, label: 'Very slow (600ms)' }
+]
+
+const animationEasingOptions = [
+  { value: 'ease', label: 'Ease' },
+  { value: 'smooth', label: 'Smooth' },
+  { value: 'snappy', label: 'Snappy' },
+  { value: 'bounce', label: 'Bounce' }
 ]
 </script>
 
@@ -186,6 +210,50 @@ const nsfwOptions = [
                 min="20"
                 max="100"
               />
+            </label>
+          </section>
+
+          <!-- Animation Section -->
+          <section class="settings-section">
+            <h3>Animation</h3>
+
+            <label class="setting-row">
+              <span>Transition type</span>
+              <select v-model="settings.animation.type">
+                <option
+                  v-for="opt in animationTypeOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                >
+                  {{ opt.label }}
+                </option>
+              </select>
+            </label>
+
+            <label class="setting-row" v-if="settings.animation.type !== 'none'">
+              <span>Speed</span>
+              <select v-model.number="settings.animation.duration">
+                <option
+                  v-for="opt in animationDurationOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                >
+                  {{ opt.label }}
+                </option>
+              </select>
+            </label>
+
+            <label class="setting-row" v-if="settings.animation.type !== 'none'">
+              <span>Easing</span>
+              <select v-model="settings.animation.easing">
+                <option
+                  v-for="opt in animationEasingOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                >
+                  {{ opt.label }}
+                </option>
+              </select>
             </label>
           </section>
 

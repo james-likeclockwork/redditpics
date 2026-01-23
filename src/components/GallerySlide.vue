@@ -198,6 +198,10 @@ defineExpose({ next, prev, goTo, currentIndex })
   object-fit: contain;
   opacity: 0;
   transition: opacity 0.2s ease;
+  /* GPU acceleration to prevent tearing during slide transitions */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .gallery-container img.active {

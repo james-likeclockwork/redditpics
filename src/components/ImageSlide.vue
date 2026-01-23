@@ -95,6 +95,10 @@ img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  /* GPU acceleration to prevent tearing during slide transitions */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 img.blur {

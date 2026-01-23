@@ -30,6 +30,11 @@ const defaultSettings = {
     swipeSensitivity: 50,
     keyboardEnabled: true
   },
+  animation: {
+    duration: 400, // ms
+    easing: 'smooth', // 'ease' | 'smooth' | 'snappy' | 'bounce'
+    type: 'slide' // 'none' | 'slide' | 'fade' | 'slide-fade' | 'zoom'
+  },
   performance: {
     preloadEnabled: true
   }

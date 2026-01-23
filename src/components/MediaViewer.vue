@@ -185,7 +185,7 @@ function galleryPrev() {
 }
 
 // Swipe handling - vertical for posts, horizontal for gallery
-useSwipe(containerRef, {
+const { isSwiping, deltaY, direction } = useSwipe(containerRef, {
   threshold: props.settings.navigation.swipeSensitivity,
   onSwipeUp: next,
   onSwipeDown: prev,
@@ -193,6 +193,106 @@ useSwipe(containerRef, {
   onSwipeRight: galleryPrev,
   preventScroll: true
 })
+
+// Animation settings
+const easingMap = {
+  ease: 'ease',
+  smooth: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+  snappy: 'cubic-bezier(0.4, 0, 0.2, 1)',
+  bounce: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+}
+
+const animationType = computed(() => props.settings.animation?.type || 'slide')
+const animationDuration = computed(() => props.settings.animation?.duration || 400)
+const animationEasing = computed(() => easingMap[props.settings.animation?.easing] || easingMap.smooth)
+
+// Check if animation type uses container movement (slide-based) or stacked slides (fade/zoom)
+const usesContainerSlide = computed(() => {
+  const type = animationType.value
+  return type === 'slide' || type === 'slide-fade'
+})
+
+// Compute transform with drag offset for smooth follow-through
+const slideTransform = computed(() => {
+  // For fade/zoom modes, container doesn't move - slides are stacked
+  if (!usesContainerSlide.value) {
+    return 'translate3d(0, 0, 0)'
+  }
+
+  const baseOffset = props.currentIndex * 100
+
+  // Only apply drag offset for vertical swipes
+  if (isSwiping.value && (direction.value === 'up' || direction.value === 'down')) {
+    const dragPercent = (deltaY.value / window.innerHeight) * 100
+    const atStart = props.currentIndex === 0 && deltaY.value > 0
+    const atEnd = props.currentIndex === props.posts.length - 1 && deltaY.value < 0
+    const resistance = (atStart || atEnd) ? 0.3 : 0.6
+    const finalOffset = -baseOffset + (dragPercent * resistance)
+    return `translate3d(0, ${finalOffset}%, 0)`
+  }
+
+  return `translate3d(0, -${baseOffset}%, 0)`
+})
+
+const containerTransition = computed(() => {
+  if (animationType.value === 'none') return 'none'
+  if (!usesContainerSlide.value) return 'none'
+  if (isSwiping.value && (direction.value === 'up' || direction.value === 'down')) return 'none'
+  return `transform ${animationDuration.value}ms ${animationEasing.value}`
+})
+
+// Compute styles per slide based on animation type
+function getSlideStyle(virtualIndex) {
+  const isActive = virtualIndex === props.currentIndex
+  const type = animationType.value
+  const duration = animationDuration.value
+  const easing = animationEasing.value
+
+  // For slide-based animations, position slides vertically
+  if (type === 'slide') {
+    return {
+      transform: `translateY(${virtualIndex * 100}%)`
+    }
+  }
+
+  if (type === 'slide-fade') {
+    return {
+      transform: `translateY(${virtualIndex * 100}%)`,
+      opacity: isActive ? 1 : 0.3,
+      transition: `opacity ${duration}ms ${easing}`
+    }
+  }
+
+  // For stacked animations (fade, zoom, none), all slides at same position
+  if (type === 'none') {
+    return {
+      opacity: isActive ? 1 : 0,
+      visibility: isActive ? 'visible' : 'hidden',
+      transition: 'none'
+    }
+  }
+
+  if (type === 'fade') {
+    return {
+      opacity: isActive ? 1 : 0,
+      transition: `opacity ${duration}ms ${easing}`
+    }
+  }
+
+  if (type === 'zoom') {
+    const scale = isActive ? 1 : 0.85
+    return {
+      transform: `scale(${scale})`,
+      opacity: isActive ? 1 : 0,
+      transition: `transform ${duration}ms ${easing}, opacity ${duration}ms ${easing}`
+    }
+  }
+
+  // Fallback
+  return {
+    transform: `translateY(${virtualIndex * 100}%)`
+  }
+}
 
 // Wheel handling for desktop
 function handleWheel(e) {
@@ -270,23 +370,24 @@ defineExpose({ next, prev, goToIndex, galleryNext, galleryPrev, slideRefs, seekV
   <div ref="containerRef" class="media-viewer" :style="{ backgroundColor: settings.display?.backgroundColor }">
     <div
       class="slides-container"
-      :style="{ transform: `translateY(-${currentIndex * 100}%)` }"
+      :style="{ transform: slideTransform, transition: containerTransition }"
     >
+      <!-- Only render slide wrappers for visible range, position them absolutely -->
       <div
-        v-for="(post, idx) in posts"
-        :key="post.post?.id || idx"
+        v-for="post in visiblePosts"
+        :key="post.post?.id || post.virtualIndex"
         class="slide-wrapper"
+        :style="getSlideStyle(post.virtualIndex)"
       >
         <MediaSlide
-          v-if="idx >= visibleRange.start && idx <= visibleRange.end"
-          :ref="el => { if (el) slideRefs[idx] = el }"
+          :ref="el => { if (el) slideRefs[post.virtualIndex] = el }"
           :media="post"
-          :active="idx === currentIndex"
+          :active="post.virtualIndex === currentIndex"
           :settings="settings"
-          @loaded="onMediaLoaded(idx)"
-          @ended="onMediaEnded(idx)"
-          @error="onMediaError(idx)"
-          @gallery-complete="onGalleryComplete(idx)"
+          @loaded="onMediaLoaded(post.virtualIndex)"
+          @ended="onMediaEnded(post.virtualIndex)"
+          @error="onMediaError(post.virtualIndex)"
+          @gallery-complete="onGalleryComplete(post.virtualIndex)"
         />
       </div>
     </div>
@@ -299,15 +400,27 @@ defineExpose({ next, prev, goToIndex, galleryNext, galleryPrev, slideRefs, seekV
   height: 100%;
   overflow: hidden;
   touch-action: none;
+  position: relative;
+  /* Isolate this element's rendering */
+  isolation: isolate;
+  contain: layout style;
 }
 
 .slides-container {
+  position: relative;
+  width: 100%;
   height: 100%;
-  transition: transform 0.3s ease-out;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 .slide-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
+  backface-visibility: hidden;
+  contain: layout style paint;
 }
 </style>

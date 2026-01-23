@@ -30,7 +30,7 @@ function parseUrl() {
   const search = new URLSearchParams(window.location.search)
 
   // Match /r/subreddit or /r/sub1+sub2+sub3
-  const match = path.match(/^\/r\/([^\/]+)(?:\/([^\/]+))?/)
+  const match = path.match(/^\/r\/([^/]+)(?:\/([^/]+))?/)
 
   if (!match) {
     // Homepage - no subreddit specified
@@ -484,7 +484,6 @@ onUnmounted(() => {
 
     <!-- Settings modal -->
     <SettingsPanel
-      :settings="settings"
       :visible="settingsVisible"
       @close="settingsVisible = false"
       @reset="resetSettings"
