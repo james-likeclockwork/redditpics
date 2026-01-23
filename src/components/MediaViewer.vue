@@ -1,0 +1,291 @@
+<script setup>
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import MediaSlide from './MediaSlide.vue'
+import { useSwipe } from '../composables/useSwipe.js'
+
+const props = defineProps({
+  posts: {
+    type: Array,
+    required: true
+  },
+  currentIndex: {
+    type: Number,
+    default: 0
+  },
+  settings: {
+    type: Object,
+    required: true
+  }
+})
+
+const emit = defineEmits(['update:currentIndex', 'needMore', 'mediaLoaded', 'mediaEnded', 'mediaError', 'galleryComplete'])
+
+const containerRef = ref(null)
+const slideRefs = ref({})
+
+// Virtualization - render current + 1 behind + ahead (3 if preload enabled, 1 if not)
+const visibleRange = computed(() => {
+  const behind = 1
+  const ahead = props.settings.performance?.preloadEnabled ? 3 : 1
+  const start = Math.max(0, props.currentIndex - behind)
+  const end = Math.min(props.posts.length - 1, props.currentIndex + ahead)
+  return { start, end }
+})
+
+const visiblePosts = computed(() => {
+  const { start, end } = visibleRange.value
+  return props.posts.slice(start, end + 1).map((post, i) => ({
+    ...post,
+    virtualIndex: start + i
+  }))
+})
+
+// Preload images for upcoming posts (only after current loads)
+const preloadCache = new Set()
+const currentLoaded = ref(false)
+let preloadTimeout = null
+
+function preloadMedia(post) {
+  if (!post) return
+
+  const key = post.post?.id || post.url
+  if (preloadCache.has(key)) return
+  preloadCache.add(key)
+
+  if (post.type === 'image' && post.url) {
+    const img = new Image()
+    img.src = post.url
+  } else if (post.type === 'gallery' && post.items) {
+    // Preload first 3 images of gallery
+    post.items.slice(0, 3).forEach(item => {
+      const img = new Image()
+      img.src = item.url
+    })
+  }
+  // Videos are preloaded by being rendered in DOM with preload="auto"
+  // They won't play until active=true
+}
+
+function preloadNearby() {
+  if (!currentLoaded.value) return
+  if (!props.settings.performance?.preloadEnabled) return
+
+  const index = props.currentIndex
+  for (let i = 1; i <= 5; i++) {
+    const nextPost = props.posts[index + i]
+    if (nextPost) {
+      preloadMedia(nextPost)
+    }
+  }
+}
+
+// Reset loaded state when changing posts and cleanup distant slides
+watch(() => props.currentIndex, (newIndex, oldIndex) => {
+  currentLoaded.value = false
+  if (preloadTimeout) {
+    clearTimeout(preloadTimeout)
+    preloadTimeout = null
+  }
+
+  // Clean up slides that are now far away (more than 5 positions)
+  const cleanupDistance = 5
+  Object.keys(slideRefs.value).forEach(key => {
+    const idx = parseInt(key)
+    if (Math.abs(idx - newIndex) > cleanupDistance) {
+      delete slideRefs.value[idx]
+    }
+  })
+
+  // Clear preload cache entries for distant posts to allow re-preloading if user goes back
+  const keysToRemove = []
+  preloadCache.forEach(key => {
+    // Can't easily map cache keys to indices, so just limit cache size
+    if (preloadCache.size > 20) {
+      keysToRemove.push(key)
+    }
+  })
+  keysToRemove.slice(0, preloadCache.size - 20).forEach(key => preloadCache.delete(key))
+})
+
+// Check if we need to fetch more
+watch(() => props.currentIndex, (index) => {
+  if (index >= props.posts.length - 10) {
+    emit('needMore')
+  }
+})
+
+// Also check on posts length change (in case we filtered many out)
+watch(() => props.posts.length, () => {
+  if (props.currentIndex >= props.posts.length - 10) {
+    emit('needMore')
+  }
+}, { immediate: true })
+
+// Navigation
+function goToIndex(index) {
+  if (index >= 0 && index < props.posts.length) {
+    emit('update:currentIndex', index)
+  }
+}
+
+function next() {
+  if (props.currentIndex < props.posts.length - 1) {
+    goToIndex(props.currentIndex + 1)
+  }
+}
+
+function prev() {
+  if (props.currentIndex > 0) {
+    goToIndex(props.currentIndex - 1)
+  }
+}
+
+// Gallery navigation for current slide (falls back to post navigation if not a gallery or at boundary)
+function galleryNext() {
+  const currentSlide = slideRefs.value[props.currentIndex]
+  if (currentSlide?.isGallery?.()) {
+    const currentIdx = currentSlide.getGalleryIndex()
+    const total = currentSlide.getGalleryTotal()
+    if (currentIdx >= total - 1) {
+      next()
+    } else {
+      currentSlide.galleryNext()
+    }
+  } else {
+    next()
+  }
+}
+
+function galleryPrev() {
+  const currentSlide = slideRefs.value[props.currentIndex]
+  if (currentSlide?.isGallery?.()) {
+    const currentIdx = currentSlide.getGalleryIndex()
+    if (currentIdx <= 0) {
+      prev()
+    } else {
+      currentSlide.galleryPrev()
+    }
+  } else {
+    prev()
+  }
+}
+
+// Swipe handling - vertical for posts, horizontal for gallery
+useSwipe(containerRef, {
+  threshold: props.settings.navigation.swipeSensitivity,
+  onSwipeUp: next,
+  onSwipeDown: prev,
+  onSwipeLeft: galleryNext,
+  onSwipeRight: galleryPrev,
+  preventScroll: true
+})
+
+// Wheel handling for desktop
+function handleWheel(e) {
+  e.preventDefault()
+  if (Math.abs(e.deltaY) > 30) {
+    if (e.deltaY > 0) {
+      next()
+    } else {
+      prev()
+    }
+  }
+}
+
+// Debounce wheel events
+let wheelTimeout = null
+function debouncedWheel(e) {
+  e.preventDefault()
+  if (wheelTimeout) return
+  wheelTimeout = setTimeout(() => {
+    wheelTimeout = null
+  }, 200)
+
+  if (e.deltaY > 0) {
+    next()
+  } else if (e.deltaY < 0) {
+    prev()
+  }
+}
+
+onMounted(() => {
+  containerRef.value?.addEventListener('wheel', debouncedWheel, { passive: false })
+})
+
+onUnmounted(() => {
+  containerRef.value?.removeEventListener('wheel', debouncedWheel)
+  if (wheelTimeout) clearTimeout(wheelTimeout)
+})
+
+// Event handlers from slides
+function onMediaLoaded(index) {
+  // Only process if this is the current slide
+  if (index === props.currentIndex) {
+    currentLoaded.value = true
+    // Start preloading nearby posts after a short delay
+    preloadTimeout = setTimeout(preloadNearby, 100)
+  }
+  emit('mediaLoaded', index)
+}
+
+function onMediaEnded(index) {
+  emit('mediaEnded', index)
+}
+
+function onMediaError(index) {
+  emit('mediaError', index)
+}
+
+function onGalleryComplete(index) {
+  emit('galleryComplete', index)
+}
+
+defineExpose({ next, prev, goToIndex, galleryNext, galleryPrev })
+</script>
+
+<template>
+  <div ref="containerRef" class="media-viewer">
+    <div
+      class="slides-container"
+      :style="{ transform: `translateY(-${currentIndex * 100}%)` }"
+    >
+      <div
+        v-for="(post, idx) in posts"
+        :key="post.post?.id || idx"
+        class="slide-wrapper"
+      >
+        <MediaSlide
+          v-if="idx >= visibleRange.start && idx <= visibleRange.end"
+          :ref="el => { if (el) slideRefs[idx] = el }"
+          :media="post"
+          :active="idx === currentIndex"
+          :settings="settings"
+          @loaded="onMediaLoaded(idx)"
+          @ended="onMediaEnded(idx)"
+          @error="onMediaError(idx)"
+          @gallery-complete="onGalleryComplete(idx)"
+        />
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.media-viewer {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  touch-action: none;
+}
+
+.slides-container {
+  height: 100%;
+  transition: transform 0.3s ease-out;
+}
+
+.slide-wrapper {
+  width: 100%;
+  height: 100%;
+}
+</style>
