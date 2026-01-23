@@ -103,19 +103,18 @@ onMounted(() => {
 
 <style scoped>
 .homepage {
-  height: 100vh;
+  min-height: 100vh;
   background: #0a0a0a;
   color: #fff;
   padding: 20px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .header {
   text-align: center;
   margin-bottom: 16px;
-  flex-shrink: 0;
 }
 
 .header h1 {
@@ -140,8 +139,6 @@ onMounted(() => {
   max-width: 700px;
   width: 100%;
   margin: 0 auto;
-  flex: 1;
-  align-content: center;
 }
 
 .card {
@@ -225,7 +222,6 @@ onMounted(() => {
   margin-top: 16px;
   color: rgba(255, 255, 255, 0.4);
   font-size: 0.9rem;
-  flex-shrink: 0;
 }
 
 .footer code {
@@ -237,10 +233,7 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .homepage {
-    height: auto;
-    min-height: 100vh;
     padding: 16px;
-    overflow: auto;
   }
 
   .header h1 {
@@ -250,7 +243,6 @@ onMounted(() => {
   .grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
-    flex: none;
   }
 
   .card-info {
