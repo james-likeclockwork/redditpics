@@ -22,10 +22,17 @@ A TikTok-style media viewer for Reddit. Swipe through images, videos, galleries,
 - **Fullscreen mode** - Press `F` for distraction-free viewing
 
 <p align="center">
-  <img src="screenshots/desktop.png" width="70%" alt="Desktop view">
+  <img src="screenshots/home.png" width="70%" alt="Homepage">
+  <br>
+  <em>Homepage - Browse curated photography subreddits</em>
 </p>
+
 <p align="center">
-  <img src="screenshots/mobile.png" width="250" alt="Mobile view">
+  <img src="screenshots/desktop.png" width="55%" alt="Desktop view">
+  &nbsp;&nbsp;
+  <img src="screenshots/mobile.png" width="20%" alt="Mobile view">
+  <br>
+  <em>Media viewer - Desktop and mobile</em>
 </p>
 
 ## Quick Start
