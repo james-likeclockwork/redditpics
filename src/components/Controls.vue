@@ -209,7 +209,7 @@ const permalink = computed(() => {
 <style scoped>
 .toggle-controls-btn {
   position: absolute;
-  top: 16px;
+  bottom: 16px;
   left: 16px;
   width: 40px;
   height: 40px;
@@ -246,16 +246,16 @@ const permalink = computed(() => {
 
 .top-bar {
   position: absolute;
-  top: 0;
+  bottom: 0;
   left: 0;
   right: 0;
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   padding: 16px;
   padding-left: 70px;
   padding-right: 80px;
-  background: linear-gradient(rgba(0, 0, 0, 0.8), transparent 90%);
+  background: linear-gradient(transparent 10%, rgba(0, 0, 0, 0.8));
 }
 
 .top-bar-right {
@@ -273,8 +273,8 @@ const permalink = computed(() => {
 .sort-selector {
   position: relative;
   margin-right: 16px;
-  padding-bottom: 8px;
-  margin-bottom: -8px;
+  padding-top: 8px;
+  margin-top: -8px;
 }
 
 .sort-btn {
@@ -294,7 +294,7 @@ const permalink = computed(() => {
 
 .sort-menu {
   position: absolute;
-  top: 100%;
+  bottom: 100%;
   left: 0;
   min-width: 140px;
   background: rgba(30, 30, 30, 0.95);
@@ -360,7 +360,7 @@ const permalink = computed(() => {
 
 .side-controls {
   position: absolute;
-  right: 16px;
+  left: 16px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
