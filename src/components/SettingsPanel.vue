@@ -110,6 +110,15 @@ const nsfwOptions = [
               <span>Show progress bar</span>
               <input type="checkbox" v-model="settings.display.showProgress" />
             </label>
+
+            <label class="setting-row">
+              <span>Background color</span>
+              <input
+                type="color"
+                v-model="settings.display.backgroundColor"
+                class="color-input"
+              />
+            </label>
           </section>
 
           <!-- Video Section -->
@@ -310,6 +319,16 @@ const nsfwOptions = [
 .setting-row input[type="range"] {
   width: 120px;
   accent-color: #4a9eff;
+}
+
+.setting-row .color-input {
+  width: 50px;
+  height: 36px;
+  padding: 2px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
 }
 
 .settings-footer {

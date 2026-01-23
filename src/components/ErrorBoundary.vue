@@ -72,7 +72,7 @@ onErrorCaptured((error, instance, info) => {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: #000;
+  background: var(--bg-color, #000);
   color: #fff;
 }
 

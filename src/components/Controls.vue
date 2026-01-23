@@ -40,7 +40,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['prev', 'next', 'togglePlay', 'openSettings', 'toggleControls', 'toggleFullscreen', 'changeSort'])
+const emit = defineEmits(['prev', 'next', 'togglePlay', 'openSettings', 'toggleControls', 'toggleFullscreen', 'changeSort', 'openHelp'])
 
 const sortMenuOpen = ref(false)
 
@@ -188,6 +188,9 @@ const permalink = computed(() => {
       <button class="settings-btn" @click="emit('openSettings')">
         ⚙
       </button>
+      <button class="help-btn" @click="emit('openHelp')" title="Help (?)">
+        ?
+      </button>
     </div>
 
     <!-- Side controls (right side) -->
@@ -196,7 +199,7 @@ const permalink = computed(() => {
         <span class="nav-icon">↑</span>
       </button>
       <button class="play-btn" @click="emit('togglePlay')">
-        {{ isPlaying ? '⏸' : '▶' }}
+        <span :class="isPlaying ? 'icon-pause' : 'icon-play'">{{ isPlaying ? '⏸' : '▶' }}</span>
       </button>
       <button class="nav-zone nav-next" @click="emit('next')">
         <span class="nav-icon">↓</span>
@@ -344,7 +347,8 @@ const permalink = computed(() => {
 }
 
 .fullscreen-btn,
-.settings-btn {
+.settings-btn,
+.help-btn {
   width: 40px;
   height: 40px;
   border: none;
@@ -355,12 +359,18 @@ const permalink = computed(() => {
   cursor: pointer;
 }
 
-.fullscreen-btn {
+.fullscreen-btn,
+.settings-btn {
   margin-right: 8px;
 }
 
+.help-btn {
+  font-weight: 700;
+}
+
 .fullscreen-btn:hover,
-.settings-btn:hover {
+.settings-btn:hover,
+.help-btn:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
@@ -402,13 +412,27 @@ const permalink = computed(() => {
   color: #fff;
   font-size: 24px;
   cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.play-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.icon-play,
+.icon-pause {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.play-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
+.icon-play {
+  transform: translate(2px, 0);
+}
+
+.icon-pause {
+  transform: translate(0, -1px);
 }
 
 .post-info {

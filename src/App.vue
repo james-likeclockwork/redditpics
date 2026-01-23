@@ -6,11 +6,23 @@ import Controls from './components/Controls.vue'
 import ProgressBar from './components/ProgressBar.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import ErrorBoundary from './components/ErrorBoundary.vue'
+import HelpModal from './components/HelpModal.vue'
 import { useRedditFetcher } from './composables/useRedditFetcher.js'
 import { useSettings } from './composables/useSettings.js'
 import { useAutoNext } from './composables/useAutoNext.js'
 import { logger } from './utils/logger.js'
 import { validateSubreddits, validateSort, validateTimeFilter } from './utils/validators'
+
+// Calculate if background is light or dark
+function isLightColor(hex) {
+  if (!hex) return false
+  const color = hex.replace('#', '')
+  const r = parseInt(color.substr(0, 2), 16)
+  const g = parseInt(color.substr(2, 2), 16)
+  const b = parseInt(color.substr(4, 2), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.5
+}
 
 // URL parsing with input validation
 function parseUrl() {
@@ -56,6 +68,7 @@ const currentSort = ref(urlParams.sort)
 const currentTimeFilter = ref(urlParams.timeFilter)
 const currentIndex = ref(0)
 const settingsVisible = ref(false)
+const helpVisible = ref(false)
 const viewerRef = ref(null)
 const isFullscreen = ref(false)
 const showInfoBeforeFullscreen = ref(true)
@@ -64,6 +77,9 @@ const failedPostIds = ref(new Set())
 // Composables
 const { settings, reset: resetSettings } = useSettings()
 const { posts, loading, error, hasMore, fetchPosts, fetchMore, setTimeFilterChangeCallback, setNoSuitablePostsCallback } = useRedditFetcher()
+
+// Light/dark mode detection
+const isLight = computed(() => isLightColor(settings.display.backgroundColor))
 
 // Handle time filter fallback (when no results found, fetcher tries broader range)
 setTimeFilterChangeCallback((newTimeFilter) => {
@@ -282,6 +298,12 @@ function handleKeydown(e) {
     }
     return
   }
+  if (helpVisible.value) {
+    if (e.key === 'Escape') {
+      helpVisible.value = false
+    }
+    return
+  }
 
   switch (e.key) {
     case 'ArrowUp':
@@ -318,6 +340,9 @@ function handleKeydown(e) {
       break
     case 'f':
       toggleFullscreen()
+      break
+    case '?':
+      helpVisible.value = !helpVisible.value
       break
     case 'Escape':
       if (document.fullscreenElement) {
@@ -394,7 +419,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app">
+  <div class="app" :class="{ light: isLight }" :style="{ '--bg-color': settings.display.backgroundColor, backgroundColor: settings.display.backgroundColor }">
     <!-- Homepage -->
     <HomePage v-if="isHomePage" />
 
@@ -448,6 +473,7 @@ onUnmounted(() => {
         @toggle-controls="toggleControls"
         @toggle-fullscreen="toggleFullscreen"
         @change-sort="handleChangeSort"
+        @open-help="helpVisible = true"
       />
     </template>
 
@@ -463,6 +489,12 @@ onUnmounted(() => {
       @close="settingsVisible = false"
       @reset="resetSettings"
     />
+
+    <!-- Help modal -->
+    <HelpModal
+      :visible="helpVisible"
+      @close="helpVisible = false"
+    />
   </div>
 </template>
 
@@ -470,7 +502,6 @@ onUnmounted(() => {
 .app {
   width: 100%;
   height: 100%;
-  background: #000;
   color: #fff;
   position: relative;
 }
@@ -521,5 +552,30 @@ onUnmounted(() => {
 
 .error-screen button:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+/* Light mode overrides */
+.app.light {
+  color: #000;
+}
+
+.app.light .loading-screen p,
+.app.light .error-screen p,
+.app.light .empty-screen p {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.app.light .spinner {
+  border-color: rgba(0, 0, 0, 0.2);
+  border-top-color: #000;
+}
+
+.app.light .error-screen button {
+  background: rgba(0, 0, 0, 0.1);
+  color: #000;
+}
+
+.app.light .error-screen button:hover {
+  background: rgba(0, 0, 0, 0.2);
 }
 </style>

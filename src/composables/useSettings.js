@@ -14,7 +14,8 @@ const defaultSettings = {
   display: {
     showInfo: true,
     showProgress: true,
-    theme: 'dark'
+    theme: 'dark',
+    backgroundColor: '#000000'
   },
   video: {
     autoplay: true,

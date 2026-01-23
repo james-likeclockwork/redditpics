@@ -176,7 +176,7 @@ defineExpose({ videoRef, seekRelative })
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #000;
+  background: var(--bg-color, #000);
 }
 
 .loading {

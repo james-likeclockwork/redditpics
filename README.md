@@ -76,6 +76,7 @@ http://localhost:3000/r/{subreddit}/{sort}?t={time}
 | `F` | Toggle fullscreen |
 | `M` | Toggle mute |
 | `I` | Toggle info overlay |
+| `?` | Show help |
 
 ## Development
 

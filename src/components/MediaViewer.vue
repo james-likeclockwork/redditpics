@@ -267,7 +267,7 @@ defineExpose({ next, prev, goToIndex, galleryNext, galleryPrev, slideRefs, seekV
 </script>
 
 <template>
-  <div ref="containerRef" class="media-viewer">
+  <div ref="containerRef" class="media-viewer" :style="{ backgroundColor: settings.display?.backgroundColor }">
     <div
       class="slides-container"
       :style="{ transform: `translateY(-${currentIndex * 100}%)` }"
@@ -298,7 +298,6 @@ defineExpose({ next, prev, goToIndex, galleryNext, galleryPrev, slideRefs, seekV
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #000;
   touch-action: none;
 }
 

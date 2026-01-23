@@ -13,6 +13,13 @@ const defaultOptions: Required<RetryOptions> = {
 }
 
 /**
+ * Check if error is a rate limit (429)
+ */
+function isRateLimitError(error: Error): boolean {
+  return error.message.includes('429') || error.message.toLowerCase().includes('rate limit')
+}
+
+/**
  * Executes a function with exponential backoff retry logic
  */
 export async function withRetry<T>(
@@ -33,10 +40,14 @@ export async function withRetry<T>(
         throw lastError
       }
 
+      // Use longer delay for rate limiting (429)
+      const baseDelay = isRateLimitError(lastError) ? opts.baseDelay * 5 : opts.baseDelay
+      const maxDelay = isRateLimitError(lastError) ? opts.maxDelay * 3 : opts.maxDelay
+
       // Calculate delay with exponential backoff and jitter
-      const exponentialDelay = opts.baseDelay * Math.pow(2, attempt - 1)
+      const exponentialDelay = baseDelay * Math.pow(2, attempt - 1)
       const jitter = Math.random() * 0.3 * exponentialDelay // 0-30% jitter
-      const delay = Math.min(exponentialDelay + jitter, opts.maxDelay)
+      const delay = Math.min(exponentialDelay + jitter, maxDelay)
 
       await sleep(delay)
     }
