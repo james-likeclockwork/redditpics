@@ -24,8 +24,9 @@ const subreddits = ref(FEATURED_SUBREDDITS.map(sub => ({
 async function fetchPreview(index) {
   const sub = subreddits.value[index]
   try {
+    // Use hot instead of top/day - more reliable for less active subreddits
     const response = await fetch(
-      `/api/reddit/r/${sub.name}/top.json?t=day&limit=10&raw_json=1`,
+      `/api/reddit/r/${sub.name}/hot.json?limit=10&raw_json=1`,
       { signal: AbortSignal.timeout(10000) }
     )
 
