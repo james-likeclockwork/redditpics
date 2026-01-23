@@ -103,21 +103,25 @@ onMounted(() => {
 
 <style scoped>
 .homepage {
-  min-height: 100vh;
+  height: 100vh;
   background: #0a0a0a;
   color: #fff;
-  padding: 24px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .header {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .header h1 {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -126,15 +130,18 @@ onMounted(() => {
 
 .tagline {
   color: rgba(255, 255, 255, 0.6);
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  max-width: 1000px;
+  gap: 12px;
+  max-width: 700px;
+  width: 100%;
   margin: 0 auto;
+  flex: 1;
+  align-content: center;
 }
 
 .card {
@@ -153,7 +160,7 @@ onMounted(() => {
 }
 
 .card-image {
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 4 / 3;
   background: #252525;
   position: relative;
   overflow: hidden;
@@ -199,25 +206,26 @@ onMounted(() => {
 }
 
 .card-info {
-  padding: 16px;
+  padding: 10px;
 }
 
 .card-info h2 {
-  font-size: 1.1rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .card-info p {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.5);
 }
 
 .footer {
   text-align: center;
-  margin-top: 48px;
+  margin-top: 16px;
   color: rgba(255, 255, 255, 0.4);
   font-size: 0.9rem;
+  flex-shrink: 0;
 }
 
 .footer code {
