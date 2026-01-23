@@ -402,6 +402,9 @@ const permalink = computed(() => {
   color: #fff;
   font-size: 24px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .play-btn:hover {
