@@ -18,6 +18,10 @@ const props = defineProps({
   settings: {
     type: Object,
     required: true
+  },
+  userActive: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -146,6 +150,7 @@ defineExpose({
       :nsfw="isNsfw"
       :nsfw-mode="settings.content.nsfwMode"
       :frame-style="settings.display.frameStyle"
+      :user-active="userActive"
       @loaded="onLoaded"
       @ended="onEnded"
       @error="onError"
@@ -159,6 +164,7 @@ defineExpose({
       :nsfw="isNsfw"
       :nsfw-mode="settings.content.nsfwMode"
       :frame-style="settings.display.frameStyle"
+      :user-active="userActive"
       @loaded="onLoaded"
       @complete="onGalleryComplete"
       @index-change="onGalleryIndexChange"
@@ -175,6 +181,7 @@ defineExpose({
       :nsfw="isNsfw"
       :nsfw-mode="settings.content.nsfwMode"
       :frame-style="settings.display.frameStyle"
+      :user-active="userActive"
       @loaded="onLoaded"
       @ended="onEnded"
       @error="onError"

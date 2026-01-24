@@ -16,6 +16,10 @@ const props = defineProps({
   settings: {
     type: Object,
     required: true
+  },
+  userActive: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -427,6 +431,7 @@ defineExpose({ next, prev, goToIndex, galleryNext, galleryPrev, slideRefs, seekV
           :media="post"
           :active="post.virtualIndex === currentIndex"
           :settings="settings"
+          :user-active="userActive"
           @loaded="onMediaLoaded(post.virtualIndex)"
           @ended="onMediaEnded(post.virtualIndex)"
           @error="onMediaError(post.virtualIndex)"

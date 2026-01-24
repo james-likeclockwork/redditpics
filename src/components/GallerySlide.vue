@@ -22,6 +22,10 @@ const props = defineProps({
   frameStyle: {
     type: String,
     default: 'none'
+  },
+  userActive: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -144,18 +148,18 @@ defineExpose({ next, prev, goTo, currentIndex })
     </div>
 
     <!-- Navigation arrows -->
-    <button v-if="currentIndex > 0" class="nav-btn nav-prev" @click.stop="prev">
+    <button v-if="currentIndex > 0" class="nav-btn nav-prev" :class="{ hidden: !userActive }" @click.stop="prev">
       <ChevronLeft :size="32" />
     </button>
-    <button v-if="currentIndex < total - 1" class="nav-btn nav-next" @click.stop="next">
+    <button v-if="currentIndex < total - 1" class="nav-btn nav-next" :class="{ hidden: !userActive }" @click.stop="next">
       <ChevronRight :size="32" />
     </button>
 
     <!-- Counter -->
-    <div class="counter">{{ currentIndex + 1 }} / {{ total }}</div>
+    <div class="counter" :class="{ hidden: !userActive }">{{ currentIndex + 1 }} / {{ total }}</div>
 
     <!-- Dots indicator -->
-    <div v-if="total <= 10" class="dots">
+    <div v-if="total <= 10" class="dots" :class="{ hidden: !userActive }">
       <button
         v-for="(_, index) in items"
         :key="index"
@@ -314,6 +318,12 @@ defineExpose({ next, prev, goTo, currentIndex })
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.nav-btn.hidden {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .nav-prev {
@@ -336,6 +346,12 @@ defineExpose({ next, prev, goTo, currentIndex })
   color: #fff;
   font-size: 14px;
   z-index: 5;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.counter.hidden {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .dots {
@@ -346,6 +362,12 @@ defineExpose({ next, prev, goTo, currentIndex })
   display: flex;
   gap: 8px;
   z-index: 5;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.dots.hidden {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .dots button {

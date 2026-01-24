@@ -38,6 +38,10 @@ const props = defineProps({
   frameStyle: {
     type: String,
     default: 'none'
+  },
+  userActive: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -225,7 +229,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Video controls overlay -->
-    <div v-if="loaded && !error" class="video-controls" @click.stop>
+    <div v-if="loaded && !error" class="video-controls" :class="{ hidden: !userActive }" @click.stop>
       <div class="progress-bar" @click="(e) => seek((e.offsetX / e.target.clientWidth) * 100)">
         <div class="progress-fill" :style="{ width: progress + '%' }"></div>
       </div>
@@ -246,7 +250,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Play indicator -->
-    <div v-if="loaded && !playing" class="play-indicator">
+    <div v-if="loaded && !playing && userActive" class="play-indicator">
       <Play :size="32" />
     </div>
   </div>
@@ -393,6 +397,12 @@ video.blur {
   right: 0;
   padding: 8px;
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.video-controls.hidden {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .progress-bar {

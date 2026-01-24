@@ -495,6 +495,7 @@ onUnmounted(() => {
           v-model:current-index="currentIndex"
           :posts="filteredPosts"
           :settings="settings"
+          :user-active="userActive"
           @need-more="fetchMore"
           @media-loaded="handleMediaLoaded"
           @media-ended="handleMediaEnded"

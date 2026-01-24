@@ -37,6 +37,10 @@ const props = defineProps({
   frameStyle: {
     type: String,
     default: 'none'
+  },
+  userActive: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -170,6 +174,7 @@ defineExpose({ videoRef, seekRelative })
       :nsfw="nsfw"
       :nsfw-mode="nsfwMode"
       :frame-style="frameStyle"
+      :user-active="userActive"
       @loaded="onLoaded"
       @ended="onEnded"
       @error="onError"
