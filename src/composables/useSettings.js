@@ -8,14 +8,16 @@ const defaultSettings = {
   autoNext: {
     enabled: true,
     imageDelay: 5000,
-    videoMode: 'wait', // 'wait' | 'fixed' | 'skip'
-    galleryMode: 'all' // 'all' | 'fixed'
+    videoMode: 'once' // 'once' | 'wait' | 'fixed' | 'skip'
   },
   display: {
     showInfo: true,
     showProgress: true,
     theme: 'dark',
-    backgroundColor: '#000000'
+    backgroundColor: '#000000',
+    inactivityTimeout: 10000, // ms, 0 = never hide
+    frameStyle: 'none', // 'none' | 'shadow-soft' | 'mat'
+    frameColor: '#000000' // color for shadow/glow effects
   },
   video: {
     autoplay: true,
@@ -33,7 +35,7 @@ const defaultSettings = {
   animation: {
     duration: 400, // ms
     easing: 'smooth', // 'ease' | 'smooth' | 'snappy' | 'bounce'
-    type: 'slide' // 'none' | 'slide' | 'fade' | 'slide-fade' | 'zoom'
+    type: 'slide' // 'none' | 'slide' | 'fade' | 'slide-fade' | 'zoom' | 'kenburns' | 'blur'
   },
   performance: {
     preloadEnabled: true

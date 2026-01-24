@@ -11,6 +11,7 @@ npm run test:run     # Run all tests once
 npm test             # Run tests in watch mode
 npm run lint         # ESLint with auto-fix
 npm run format       # Prettier formatting
+npm run type-check   # TypeScript type checking
 ```
 
 Run a single test file:
@@ -36,7 +37,12 @@ This is a TikTok-style Reddit media viewer built with Vue 3 Composition API. It 
 
 ### API Proxying
 
-Vite dev server proxies `/api/reddit/*` → `reddit.com` and `/api/redgifs/*` → `api.redgifs.com`. Production uses nginx (see `nginx.conf`).
+Vite dev server proxies:
+- `/api/reddit/*` → `reddit.com`
+- `/api/redgifs/*` → `api.redgifs.com`
+- `/media/redgifs/*` → `media.redgifs.com` (video content)
+
+Production uses nginx (see `nginx.conf`).
 
 ### Services
 

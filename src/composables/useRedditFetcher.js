@@ -36,12 +36,20 @@ export function useRedditFetcher() {
   let onTimeFilterChange = null // Callback when time filter changes due to fallback
   let onNoSuitablePosts = null // Callback when no suitable posts found after all fallbacks
 
-  async function fetchPosts(subreddits, sort = 'hot', timeFilter = '', isRetryWithFallback = false) {
+  async function fetchPosts(
+    subreddits,
+    sort = 'hot',
+    timeFilter = '',
+    isRetryWithFallback = false
+  ) {
     // Skip if already loading (unless this is a fallback retry)
     if (loading.value && !isRetryWithFallback) return
 
     // Reset if params changed (not for fallback retries)
-    if (!isRetryWithFallback && (subreddits !== currentSubreddits || sort !== currentSort || timeFilter !== currentTimeFilter)) {
+    if (
+      !isRetryWithFallback &&
+      (subreddits !== currentSubreddits || sort !== currentSort || timeFilter !== currentTimeFilter)
+    ) {
       posts.value = []
       after.value = null
       hasMore.value = true
@@ -127,9 +135,7 @@ export function useRedditFetcher() {
       const children = data?.data?.children || []
 
       // Extract media from posts
-      const newPosts = children
-        .map(child => extractMedia(child))
-        .filter(Boolean)
+      const newPosts = children.map((child) => extractMedia(child)).filter(Boolean)
 
       // If no results and using "top" sort, try next time range
       if (newPosts.length === 0 && posts.value.length === 0 && sort === 'top') {
@@ -241,18 +247,23 @@ export function useRedditFetcher() {
     if (removeFromStart > 0) {
       posts.value = posts.value.slice(removeFromStart)
       indexOffset.value += removeFromStart
-      logger.log('memory', `Cleaned up ${removeFromStart} old posts, new length: ${posts.value.length}`)
+      logger.log(
+        'memory',
+        `Cleaned up ${removeFromStart} old posts, new length: ${posts.value.length}`
+      )
       return currentIndex - removeFromStart
     }
 
     // If we can't remove from start, remove from end (but keep buffer after current)
-    const removeFromEnd = totalPosts - MAX_POSTS
     const safeEndIndex = currentIndex + CLEANUP_BUFFER
     const actualRemove = Math.max(0, totalPosts - Math.max(MAX_POSTS, safeEndIndex + 1))
 
     if (actualRemove > 0) {
       posts.value = posts.value.slice(0, totalPosts - actualRemove)
-      logger.log('memory', `Cleaned up ${actualRemove} posts from end, new length: ${posts.value.length}`)
+      logger.log(
+        'memory',
+        `Cleaned up ${actualRemove} posts from end, new length: ${posts.value.length}`
+      )
     }
 
     return currentIndex

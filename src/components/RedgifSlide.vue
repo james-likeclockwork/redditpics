@@ -33,6 +33,10 @@ const props = defineProps({
   nsfwMode: {
     type: String,
     default: 'show'
+  },
+  frameStyle: {
+    type: String,
+    default: 'none'
   }
 })
 
@@ -66,7 +70,7 @@ async function fetchRedgifUrl() {
     logger.startTimer(`redgif-data-${props.id}`)
     const gifRes = await fetch(`/api/redgifs/v2/gifs/${props.id}`, {
       headers: {
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`
       },
       signal: AbortSignal.timeout(10000)
     })
@@ -77,7 +81,7 @@ async function fetchRedgifUrl() {
       const newToken = await getRedgifsToken()
       const retryRes = await fetch(`/api/redgifs/v2/gifs/${props.id}`, {
         headers: {
-          'Authorization': `Bearer ${newToken}`
+          Authorization: `Bearer ${newToken}`
         },
         signal: AbortSignal.timeout(10000)
       })
@@ -131,9 +135,12 @@ onMounted(() => {
 })
 
 // Refetch if ID changes
-watch(() => props.id, () => {
-  fetchRedgifUrl()
-})
+watch(
+  () => props.id,
+  () => {
+    fetchRedgifUrl()
+  }
+)
 
 function seekRelative(seconds) {
   videoRef.value?.seekRelative?.(seconds)
@@ -162,6 +169,7 @@ defineExpose({ videoRef, seekRelative })
       :active="active"
       :nsfw="nsfw"
       :nsfw-mode="nsfwMode"
+      :frame-style="frameStyle"
       @loaded="onLoaded"
       @ended="onEnded"
       @error="onError"

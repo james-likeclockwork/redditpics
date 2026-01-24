@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
 
 const props = defineProps({
   items: {
@@ -17,8 +18,14 @@ const props = defineProps({
   nsfwMode: {
     type: String,
     default: 'show'
+  },
+  frameStyle: {
+    type: String,
+    default: 'none'
   }
 })
+
+const hasFrame = computed(() => props.frameStyle !== 'none')
 
 const emit = defineEmits(['loaded', 'complete', 'indexChange', 'error'])
 
@@ -27,9 +34,7 @@ const loadedCount = ref(0)
 const showNsfw = ref(false)
 const imageErrors = ref(new Set())
 
-const currentItem = computed(() => props.items[currentIndex.value])
 const total = computed(() => props.items.length)
-const isLast = computed(() => currentIndex.value === total.value - 1)
 const shouldBlur = computed(() => props.nsfw && props.nsfwMode === 'blur' && !showNsfw.value)
 const currentImageFailed = computed(() => imageErrors.value.has(currentIndex.value))
 
@@ -103,27 +108,30 @@ function revealNsfw() {
 }
 
 // When becoming active, emit loaded if already loaded (for auto-next)
-watch(() => props.active, (isActive) => {
-  if (isActive && loadedCount.value > 0) {
-    emit('loaded')
+watch(
+  () => props.active,
+  (isActive) => {
+    if (isActive && loadedCount.value > 0) {
+      emit('loaded')
+    }
   }
-})
+)
 
 // Touch handling moved to MediaViewer for unified swipe control
 defineExpose({ next, prev, goTo, currentIndex })
 </script>
 
 <template>
-  <div class="gallery-slide">
-    <div class="gallery-container">
+  <div class="gallery-slide" :class="{ framed: hasFrame }">
+    <div class="gallery-container" :class="[`frame-${frameStyle}`]">
       <img
         v-for="(item, index) in items"
         :key="index"
         :src="item.url"
         :class="{ active: index === currentIndex, blur: shouldBlur, error: imageErrors.has(index) }"
+        alt=""
         @load="onImageLoad"
         @error="onImageError(index)"
-        alt=""
       />
       <!-- Error state for current image -->
       <div v-if="currentImageFailed" class="image-error">
@@ -131,37 +139,23 @@ defineExpose({ next, prev, goTo, currentIndex })
       </div>
     </div>
 
-    <div
-      v-if="nsfw && nsfwMode === 'blur' && !showNsfw"
-      class="nsfw-overlay"
-      @click="revealNsfw"
-    >
+    <div v-if="nsfw && nsfwMode === 'blur' && !showNsfw" class="nsfw-overlay" @click="revealNsfw">
       <span>NSFW - Tap to reveal</span>
     </div>
 
     <!-- Navigation arrows -->
-    <button
-      v-if="currentIndex > 0"
-      class="nav-btn nav-prev"
-      @click.stop="prev"
-    >
-      ‹
+    <button v-if="currentIndex > 0" class="nav-btn nav-prev" @click.stop="prev">
+      <ChevronLeft :size="32" />
     </button>
-    <button
-      v-if="currentIndex < total - 1"
-      class="nav-btn nav-next"
-      @click.stop="next"
-    >
-      ›
+    <button v-if="currentIndex < total - 1" class="nav-btn nav-next" @click.stop="next">
+      <ChevronRight :size="32" />
     </button>
 
     <!-- Counter -->
-    <div class="counter">
-      {{ currentIndex + 1 }} / {{ total }}
-    </div>
+    <div class="counter">{{ currentIndex + 1 }} / {{ total }}</div>
 
     <!-- Dots indicator -->
-    <div class="dots" v-if="total <= 10">
+    <div v-if="total <= 10" class="dots">
       <button
         v-for="(_, index) in items"
         :key="index"
@@ -185,23 +179,82 @@ defineExpose({ next, prev, goTo, currentIndex })
 }
 
 .gallery-container {
-  width: 100%;
-  height: 100%;
   position: relative;
+  box-sizing: border-box;
 }
 
-.gallery-container img {
+/* No frame - container fills the slide */
+.gallery-slide:not(.framed) .gallery-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* No frame - images fill container */
+.gallery-slide:not(.framed) .gallery-container img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+/* Framed - container centers images */
+.gallery-slide.framed .gallery-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Framed - images constrained to 90% of viewport */
+.gallery-slide.framed .gallery-container img {
+  position: absolute;
+  max-width: 90vw;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.gallery-container img {
+  box-sizing: border-box;
   opacity: 0;
   transition: opacity 0.2s ease;
   /* GPU acceleration to prevent tearing during slide transitions */
   transform: translateZ(0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+
+/* Frame styles - applied to active image, uses --frame-color CSS variable */
+.frame-shadow img.active {
+  border: 2px solid var(--frame-color, #fff);
+  box-shadow:
+    8px 12px 20px rgba(0, 0, 0, 0.5),
+    15px 25px 50px rgba(0, 0, 0, 0.4),
+    25px 40px 80px rgba(0, 0, 0, 0.3);
+}
+
+.frame-shadow-soft img.active {
+  box-shadow:
+    0 0 40px var(--frame-color, #fff),
+    0 0 80px var(--frame-color, #fff),
+    0 0 120px var(--frame-color, #fff),
+    0 0 200px var(--frame-color, #fff);
+}
+
+.frame-mat img.active {
+  border: 12px solid var(--frame-color, #f5f5f5);
+  box-shadow:
+    8px 12px 20px rgba(0, 0, 0, 0.5),
+    15px 25px 50px rgba(0, 0, 0, 0.4),
+    25px 40px 80px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+  .frame-mat img.active {
+    border-width: 8px;
+  }
 }
 
 .gallery-container img.active {
@@ -256,9 +309,11 @@ defineExpose({ next, prev, goTo, currentIndex })
   background: rgba(0, 0, 0, 0.5);
   border: none;
   color: #fff;
-  font-size: 32px;
   cursor: pointer;
   z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .nav-prev {

@@ -19,7 +19,15 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:currentIndex', 'needMore', 'mediaLoaded', 'mediaEnded', 'mediaError', 'galleryComplete'])
+const emit = defineEmits([
+  'update:currentIndex',
+  'needMore',
+  'mediaLoaded',
+  'mediaEnded',
+  'mediaError',
+  'galleryComplete',
+  'galleryIndexChange'
+])
 
 const containerRef = ref(null)
 const slideRefs = ref({})
@@ -63,7 +71,7 @@ function preloadMedia(post, index) {
   } else if (post.type === 'gallery' && post.items) {
     logger.preloadStart(index, `gallery with ${post.items.length} items`)
     // Preload first 3 images of gallery
-    post.items.slice(0, 3).forEach(item => {
+    post.items.slice(0, 3).forEach((item) => {
       const img = new Image()
       img.src = item.url
     })
@@ -86,54 +94,64 @@ function preloadNearby() {
 }
 
 // Reset loaded state when changing posts and cleanup distant slides
-watch(() => props.currentIndex, (newIndex, oldIndex) => {
-  const delta = Math.abs(newIndex - oldIndex)
-  if (delta > 1) {
-    logger.navJump(oldIndex, newIndex)
-  } else {
-    logger.navTo(newIndex, props.posts.length)
-  }
-  logger.visibleRange(visibleRange.value.start, visibleRange.value.end, newIndex)
-
-  currentLoaded.value = false
-  if (preloadTimeout) {
-    clearTimeout(preloadTimeout)
-    preloadTimeout = null
-  }
-
-  // Clean up slides that are now far away (more than 5 positions)
-  const cleanupDistance = 5
-  Object.keys(slideRefs.value).forEach(key => {
-    const idx = parseInt(key)
-    if (Math.abs(idx - newIndex) > cleanupDistance) {
-      delete slideRefs.value[idx]
+watch(
+  () => props.currentIndex,
+  (newIndex, oldIndex) => {
+    const delta = Math.abs(newIndex - oldIndex)
+    if (delta > 1) {
+      logger.navJump(oldIndex, newIndex)
+    } else {
+      logger.navTo(newIndex, props.posts.length)
     }
-  })
+    logger.visibleRange(visibleRange.value.start, visibleRange.value.end, newIndex)
 
-  // Clear preload cache entries for distant posts to allow re-preloading if user goes back
-  const keysToRemove = []
-  preloadCache.forEach(key => {
-    // Can't easily map cache keys to indices, so just limit cache size
-    if (preloadCache.size > 20) {
-      keysToRemove.push(key)
+    currentLoaded.value = false
+    if (preloadTimeout) {
+      clearTimeout(preloadTimeout)
+      preloadTimeout = null
     }
-  })
-  keysToRemove.slice(0, preloadCache.size - 20).forEach(key => preloadCache.delete(key))
-})
+
+    // Clean up slides that are now far away (more than 5 positions)
+    const cleanupDistance = 5
+    Object.keys(slideRefs.value).forEach((key) => {
+      const idx = parseInt(key)
+      if (Math.abs(idx - newIndex) > cleanupDistance) {
+        delete slideRefs.value[idx]
+      }
+    })
+
+    // Clear preload cache entries for distant posts to allow re-preloading if user goes back
+    const keysToRemove = []
+    preloadCache.forEach((key) => {
+      // Can't easily map cache keys to indices, so just limit cache size
+      if (preloadCache.size > 20) {
+        keysToRemove.push(key)
+      }
+    })
+    keysToRemove.slice(0, preloadCache.size - 20).forEach((key) => preloadCache.delete(key))
+  }
+)
 
 // Check if we need to fetch more
-watch(() => props.currentIndex, (index) => {
-  if (index >= props.posts.length - 10) {
-    emit('needMore')
+watch(
+  () => props.currentIndex,
+  (index) => {
+    if (index >= props.posts.length - 10) {
+      emit('needMore')
+    }
   }
-})
+)
 
 // Also check on posts length change (in case we filtered many out)
-watch(() => props.posts.length, () => {
-  if (props.currentIndex >= props.posts.length - 10) {
-    emit('needMore')
-  }
-}, { immediate: true })
+watch(
+  () => props.posts.length,
+  () => {
+    if (props.currentIndex >= props.posts.length - 10) {
+      emit('needMore')
+    }
+  },
+  { immediate: true }
+)
 
 // Navigation
 function goToIndex(index) {
@@ -204,7 +222,9 @@ const easingMap = {
 
 const animationType = computed(() => props.settings.animation?.type || 'slide')
 const animationDuration = computed(() => props.settings.animation?.duration || 400)
-const animationEasing = computed(() => easingMap[props.settings.animation?.easing] || easingMap.smooth)
+const animationEasing = computed(
+  () => easingMap[props.settings.animation?.easing] || easingMap.smooth
+)
 
 // Check if animation type uses container movement (slide-based) or stacked slides (fade/zoom)
 const usesContainerSlide = computed(() => {
@@ -226,8 +246,8 @@ const slideTransform = computed(() => {
     const dragPercent = (deltaY.value / window.innerHeight) * 100
     const atStart = props.currentIndex === 0 && deltaY.value > 0
     const atEnd = props.currentIndex === props.posts.length - 1 && deltaY.value < 0
-    const resistance = (atStart || atEnd) ? 0.3 : 0.6
-    const finalOffset = -baseOffset + (dragPercent * resistance)
+    const resistance = atStart || atEnd ? 0.3 : 0.6
+    const finalOffset = -baseOffset + dragPercent * resistance
     return `translate3d(0, ${finalOffset}%, 0)`
   }
 
@@ -288,21 +308,32 @@ function getSlideStyle(virtualIndex) {
     }
   }
 
+  if (type === 'kenburns') {
+    // Ken Burns: slow zoom/pan effect while active, fade between slides
+    // Zoom duration scales with configured duration (5x), capped at 15s
+    const zoomDuration = Math.min(duration * 5, 15000)
+    const scale = isActive ? 1.1 : 1
+    return {
+      transform: `scale(${scale})`,
+      opacity: isActive ? 1 : 0,
+      transition: isActive
+        ? `transform ${zoomDuration}ms ease-out, opacity ${duration}ms ${easing}`
+        : `opacity ${duration}ms ${easing}`
+    }
+  }
+
+  if (type === 'blur') {
+    // Blur transition: blur out old slide, blur in new slide
+    return {
+      opacity: isActive ? 1 : 0,
+      filter: isActive ? 'blur(0px)' : 'blur(20px)',
+      transition: `opacity ${duration}ms ${easing}, filter ${duration}ms ${easing}`
+    }
+  }
+
   // Fallback
   return {
     transform: `translateY(${virtualIndex * 100}%)`
-  }
-}
-
-// Wheel handling for desktop
-function handleWheel(e) {
-  e.preventDefault()
-  if (Math.abs(e.deltaY) > 30) {
-    if (e.deltaY > 0) {
-      next()
-    } else {
-      prev()
-    }
   }
 }
 
@@ -358,6 +389,10 @@ function onGalleryComplete(index) {
   emit('galleryComplete', index)
 }
 
+function onGalleryIndexChange(postIndex, galleryIndex) {
+  emit('galleryIndexChange', postIndex, galleryIndex)
+}
+
 function seekVideo(seconds) {
   const currentSlide = slideRefs.value[props.currentIndex]
   currentSlide?.seekRelative?.(seconds)
@@ -367,7 +402,11 @@ defineExpose({ next, prev, goToIndex, galleryNext, galleryPrev, slideRefs, seekV
 </script>
 
 <template>
-  <div ref="containerRef" class="media-viewer" :style="{ backgroundColor: settings.display?.backgroundColor }">
+  <div
+    ref="containerRef"
+    class="media-viewer"
+    :style="{ backgroundColor: settings.display?.backgroundColor }"
+  >
     <div
       class="slides-container"
       :style="{ transform: slideTransform, transition: containerTransition }"
@@ -380,7 +419,11 @@ defineExpose({ next, prev, goToIndex, galleryNext, galleryPrev, slideRefs, seekV
         :style="getSlideStyle(post.virtualIndex)"
       >
         <MediaSlide
-          :ref="el => { if (el) slideRefs[post.virtualIndex] = el }"
+          :ref="
+            (el) => {
+              if (el) slideRefs[post.virtualIndex] = el
+            }
+          "
           :media="post"
           :active="post.virtualIndex === currentIndex"
           :settings="settings"
@@ -388,6 +431,7 @@ defineExpose({ next, prev, goToIndex, galleryNext, galleryPrev, slideRefs, seekV
           @ended="onMediaEnded(post.virtualIndex)"
           @error="onMediaError(post.virtualIndex)"
           @gallery-complete="onGalleryComplete(post.virtualIndex)"
+          @gallery-index-change="(idx) => onGalleryIndexChange(post.virtualIndex, idx)"
         />
       </div>
     </div>

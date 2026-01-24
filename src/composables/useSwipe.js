@@ -55,7 +55,7 @@ export function useSwipe(elementRef, options = {}) {
     }
   }
 
-  function handleTouchEnd(e) {
+  function handleTouchEnd(_e) {
     if (!isSwiping.value) return
 
     const elapsed = Date.now() - startTime

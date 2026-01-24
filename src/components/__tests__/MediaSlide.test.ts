@@ -161,10 +161,7 @@ describe('MediaSlide', () => {
   it('renders GallerySlide for gallery type', () => {
     const media = createMediaItem({
       type: 'gallery',
-      items: [
-        { url: 'https://i.redd.it/1.jpg' },
-        { url: 'https://i.redd.it/2.jpg' }
-      ]
+      items: [{ url: 'https://i.redd.it/1.jpg' }, { url: 'https://i.redd.it/2.jpg' }]
     })
 
     const wrapper = mount(MediaSlide, {

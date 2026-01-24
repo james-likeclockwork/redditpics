@@ -2,9 +2,9 @@
  * Storage adapter interface for abstracting storage backends
  */
 export interface StorageAdapter {
-  get<T>(key: string): T | null
-  set<T>(key: string, value: T): void
-  remove(key: string): void
+  get<T>(_key: string): T | null
+  set<T>(_key: string, _value: T): void
+  remove(_key: string): void
   clear(): void
 }
 

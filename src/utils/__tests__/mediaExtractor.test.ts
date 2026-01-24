@@ -284,6 +284,38 @@ describe('extractMedia', () => {
         )
       ).toBeNull()
     })
+
+    it('skips imgur "removed" placeholder images', () => {
+      // Direct removed.png URL
+      expect(
+        extractMedia(
+          createPost({
+            url: 'https://i.imgur.com/removed.png',
+            domain: 'i.imgur.com'
+          })
+        )
+      ).toBeNull()
+
+      // Known placeholder image ID
+      expect(
+        extractMedia(
+          createPost({
+            url: 'https://i.imgur.com/hxseNbg.jpg',
+            domain: 'i.imgur.com'
+          })
+        )
+      ).toBeNull()
+
+      // Valid imgur image should still work
+      expect(
+        extractMedia(
+          createPost({
+            url: 'https://i.imgur.com/validImage.jpg',
+            domain: 'i.imgur.com'
+          })
+        )
+      ).not.toBeNull()
+    })
   })
 
   describe('Redgifs', () => {

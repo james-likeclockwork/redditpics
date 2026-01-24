@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { HelpCircle } from 'lucide-vue-next'
 import { extractMedia } from '../utils/mediaExtractor'
 import { useSettings } from '../composables/useSettings.js'
 import HelpModal from './HelpModal.vue'
@@ -35,12 +36,14 @@ const FEATURED_SUBREDDITS = [
 const CACHE_KEY = 'redditpics_home_previews'
 const CACHE_REFRESH_INTERVAL = 5 * 60 * 1000 // Only refresh every 5 minutes
 
-const subreddits = ref(FEATURED_SUBREDDITS.map(sub => ({
-  ...sub,
-  previewUrl: null,
-  loading: true,
-  error: false
-})))
+const subreddits = ref(
+  FEATURED_SUBREDDITS.map((sub) => ({
+    ...sub,
+    previewUrl: null,
+    loading: true,
+    error: false
+  }))
+)
 
 const helpVisible = ref(false)
 
@@ -56,10 +59,13 @@ function loadCache() {
 
 function saveCache(previews) {
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({
-      timestamp: Date.now(),
-      previews
-    }))
+    localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({
+        timestamp: Date.now(),
+        previews
+      })
+    )
   } catch {
     // Ignore storage errors
   }
@@ -97,10 +103,9 @@ function getThumbnailUrl(post) {
 async function fetchPreview(index, cachedPostId = null) {
   const sub = subreddits.value[index]
   try {
-    const response = await fetch(
-      `/api/reddit/r/${sub.name}/hot.json?limit=10&raw_json=1`,
-      { signal: AbortSignal.timeout(10000) }
-    )
+    const response = await fetch(`/api/reddit/r/${sub.name}/hot.json?limit=10&raw_json=1`, {
+      signal: AbortSignal.timeout(10000)
+    })
 
     if (!response.ok) throw new Error('Failed to fetch')
 
@@ -151,17 +156,17 @@ async function loadPreviews() {
   })
 
   // Skip refresh if cache is recent and we have all previews
-  const allCached = subreddits.value.every(sub => cached[sub.name]?.url)
+  const allCached = subreddits.value.every((sub) => cached[sub.name]?.url)
   if (allCached && cacheAge < CACHE_REFRESH_INTERVAL) {
-    subreddits.value.forEach(sub => { sub.loading = false })
+    subreddits.value.forEach((sub) => {
+      sub.loading = false
+    })
     return
   }
 
   // Fetch all in parallel
   const results = await Promise.all(
-    subreddits.value.map((sub, index) =>
-      fetchPreview(index, cached[sub.name]?.postId)
-    )
+    subreddits.value.map((sub, index) => fetchPreview(index, cached[sub.name]?.postId))
   )
 
   // Update cache with new data
@@ -184,30 +189,26 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="homepage" :class="{ light: isLight }" :style="{ backgroundColor: settings.display.backgroundColor }">
+  <div
+    class="homepage"
+    :class="{ light: isLight }"
+    :style="{ backgroundColor: settings.display.backgroundColor }"
+  >
     <header class="header">
       <h1>RedditPics</h1>
       <p class="tagline">A distraction-free media viewer for Reddit</p>
-      <button class="help-btn" @click="helpVisible = true" title="Help">?</button>
+      <button class="help-btn" title="Help" @click="helpVisible = true">
+        <HelpCircle :size="20" />
+      </button>
     </header>
 
     <main class="grid">
-      <a
-        v-for="sub in subreddits"
-        :key="sub.name"
-        :href="`/r/${sub.name}`"
-        class="card"
-      >
+      <a v-for="sub in subreddits" :key="sub.name" :href="`/r/${sub.name}`" class="card">
         <div class="card-image">
           <div v-if="sub.loading" class="loading">
             <div class="spinner"></div>
           </div>
-          <img
-            v-else-if="sub.previewUrl"
-            :src="sub.previewUrl"
-            :alt="sub.name"
-            loading="lazy"
-          />
+          <img v-else-if="sub.previewUrl" :src="sub.previewUrl" :alt="sub.name" loading="lazy" />
           <div v-else class="no-preview">
             <span>r/{{ sub.name }}</span>
           </div>
@@ -272,7 +273,7 @@ onMounted(() => {
   font-size: 2rem;
   font-weight: 700;
   margin-bottom: 4px;
-  color: #FF4500;
+  color: #ff4500;
 }
 
 .tagline {
@@ -300,7 +301,9 @@ onMounted(() => {
   overflow: hidden;
   text-decoration: none;
   color: inherit;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
   min-height: 0;
 }
 

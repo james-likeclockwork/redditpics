@@ -1,4 +1,6 @@
 <script setup>
+import { X, Settings } from 'lucide-vue-next'
+
 defineProps({
   visible: {
     type: Boolean,
@@ -25,13 +27,16 @@ const shortcuts = [
   <Teleport to="body">
     <div v-if="visible" class="modal-overlay" @click.self="emit('close')">
       <div class="modal">
-        <button class="close-btn" @click="emit('close')">✕</button>
+        <button class="close-btn" @click="emit('close')"><X :size="16" /></button>
 
         <h2>How It Works</h2>
 
         <section class="section">
           <h3>Browsing</h3>
-          <p>Swipe up/down or use the navigation buttons to browse through posts. The app automatically loads more content as you scroll.</p>
+          <p>
+            Swipe up/down or use the navigation buttons to browse through posts. The app
+            automatically loads more content as you scroll.
+          </p>
         </section>
 
         <section class="section">
@@ -48,7 +53,10 @@ const shortcuts = [
 
         <section class="section">
           <h3>Slideshow</h3>
-          <p>Press the play button or <kbd>Space</kbd> to start auto-advancing through posts. Configure timing and behavior in settings (⚙).</p>
+          <p>
+            Press the play button or <kbd>Space</kbd> to start auto-advancing through posts.
+            Configure timing and behavior in settings (<Settings :size="14" class="inline-icon" />).
+          </p>
         </section>
 
         <section class="section">
@@ -154,6 +162,11 @@ p {
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.9rem;
   line-height: 1.5;
+}
+
+.inline-icon {
+  display: inline;
+  vertical-align: middle;
 }
 
 .url-examples {

@@ -125,10 +125,12 @@ describe('useRedditFetcher', () => {
   })
 
   it('prevents concurrent fetches', async () => {
-    let resolveFirst: (value: Response) => void
+    let resolveFirst: (_value: Response) => void
     const firstPromise = new Promise<Response>((resolve) => {
       resolveFirst = resolve
     })
+    // Suppress unused variable warning - resolveFirst is used later
+    void resolveFirst!
 
     vi.mocked(global.fetch).mockReturnValueOnce(firstPromise)
 

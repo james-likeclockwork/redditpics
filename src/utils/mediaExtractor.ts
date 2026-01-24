@@ -42,6 +42,22 @@ function isGifvUrl(url: string): boolean {
   return getExtension(url) === 'gifv'
 }
 
+/**
+ * Check if an Imgur URL is a known "removed" or "no longer available" placeholder
+ */
+function isImgurRemovedPlaceholder(url: string): boolean {
+  // Known Imgur placeholder image IDs for removed/deleted content
+  const removedPatterns = [
+    /i\.imgur\.com\/removed\./i,
+    /i\.imgur\.com\/deleted\./i,
+    // The actual "image does not exist" placeholder ID
+    /i\.imgur\.com\/hxseNbg\./i,
+    // Another common removed image placeholder
+    /i\.imgur\.com\/a0HlREy\./i
+  ]
+  return removedPatterns.some((pattern) => pattern.test(url))
+}
+
 export function extractMedia(post: { data?: RedditPost } | RedditPost): MediaItem | null {
   const data: RedditPost = (post as { data?: RedditPost }).data || (post as RedditPost)
 
@@ -60,13 +76,22 @@ export function extractMedia(post: { data?: RedditPost } | RedditPost): MediaIte
 
   // Skip external video sites we can't embed (YouTube, Vimeo, TikTok, etc.)
   const externalVideoDomains = [
-    'youtube.com', 'youtu.be', 'www.youtube.com', 'm.youtube.com',
-    'vimeo.com', 'www.vimeo.com',
-    'tiktok.com', 'www.tiktok.com', 'vm.tiktok.com',
-    'twitch.tv', 'www.twitch.tv', 'clips.twitch.tv',
-    'streamable.com', 'www.streamable.com'
+    'youtube.com',
+    'youtu.be',
+    'www.youtube.com',
+    'm.youtube.com',
+    'vimeo.com',
+    'www.vimeo.com',
+    'tiktok.com',
+    'www.tiktok.com',
+    'vm.tiktok.com',
+    'twitch.tv',
+    'www.twitch.tv',
+    'clips.twitch.tv',
+    'streamable.com',
+    'www.streamable.com'
   ]
-  if (externalVideoDomains.some(d => domain.includes(d))) {
+  if (externalVideoDomains.some((d) => domain.includes(d))) {
     return null
   }
 
@@ -173,6 +198,11 @@ export function extractMedia(post: { data?: RedditPost } | RedditPost): MediaIte
 
   // Imgur
   if (domain.includes('imgur.com')) {
+    // Skip known "removed" placeholder images
+    if (isImgurRemovedPlaceholder(url)) {
+      return null
+    }
+
     // Imgur gifv -> mp4
     if (isGifvUrl(url)) {
       return {
@@ -194,9 +224,14 @@ export function extractMedia(post: { data?: RedditPost } | RedditPost): MediaIte
     // Imgur page (not direct link) - try to make it direct
     const imgurMatch = url.match(/imgur\.com\/(\w+)$/)
     if (imgurMatch) {
+      const directUrl = `https://i.imgur.com/${imgurMatch[1]}.jpg`
+      // Check if the constructed URL is a known placeholder
+      if (isImgurRemovedPlaceholder(directUrl)) {
+        return null
+      }
       return {
         type: 'image',
-        url: `https://i.imgur.com/${imgurMatch[1]}.jpg`,
+        url: directUrl,
         post: data
       }
     }
@@ -332,8 +367,6 @@ export function extractMedia(post: { data?: RedditPost } | RedditPost): MediaIte
   return null
 }
 
-export function extractAllMedia(
-  posts: Array<{ data?: RedditPost } | RedditPost>
-): MediaItem[] {
+export function extractAllMedia(posts: Array<{ data?: RedditPost } | RedditPost>): MediaItem[] {
   return posts.map((post) => extractMedia(post)).filter((item): item is MediaItem => item !== null)
 }

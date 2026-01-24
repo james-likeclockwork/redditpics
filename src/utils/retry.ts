@@ -2,7 +2,7 @@ export interface RetryOptions {
   maxAttempts?: number
   baseDelay?: number
   maxDelay?: number
-  shouldRetry?: (error: Error, attempt: number) => boolean
+  shouldRetry?: (_error: Error, _attempt: number) => boolean
 }
 
 const defaultOptions: Required<RetryOptions> = {
@@ -22,10 +22,7 @@ function isRateLimitError(error: Error): boolean {
 /**
  * Executes a function with exponential backoff retry logic
  */
-export async function withRetry<T>(
-  fn: () => Promise<T>,
-  options: RetryOptions = {}
-): Promise<T> {
+export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
   const opts = { ...defaultOptions, ...options }
   let lastError: Error | null = null
 
@@ -77,7 +74,13 @@ export function isRetryableError(error: Error): boolean {
   }
 
   // HTTP 5xx errors
-  if (message.includes('http 5') || message.includes('500') || message.includes('502') || message.includes('503') || message.includes('504')) {
+  if (
+    message.includes('http 5') ||
+    message.includes('500') ||
+    message.includes('502') ||
+    message.includes('503') ||
+    message.includes('504')
+  ) {
     return true
   }
 

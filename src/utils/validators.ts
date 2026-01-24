@@ -36,9 +36,7 @@ export function validateSubreddits(input: string | null | undefined): string | n
 
   // Split by + and filter to only valid subreddit names
   const parts = decoded.split('+')
-  const validParts = parts
-    .map((part) => part.trim())
-    .filter((part) => isValidSubreddit(part))
+  const validParts = parts.map((part) => part.trim()).filter((part) => isValidSubreddit(part))
 
   if (validParts.length === 0) {
     return null

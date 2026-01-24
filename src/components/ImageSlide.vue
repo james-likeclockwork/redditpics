@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 
 const props = defineProps({
   url: {
@@ -17,6 +17,10 @@ const props = defineProps({
   nsfwMode: {
     type: String,
     default: 'show'
+  },
+  frameStyle: {
+    type: String,
+    default: 'none'
   }
 })
 
@@ -26,7 +30,29 @@ const loaded = ref(false)
 const error = ref(false)
 const showNsfw = ref(false)
 
-function onLoad() {
+/**
+ * Check if the loaded image is an Imgur "removed" placeholder
+ * The placeholder is typically 161x81 pixels
+ */
+function isImgurRemovedPlaceholder(img) {
+  // Only check for Imgur URLs
+  if (!props.url.includes('imgur.com')) {
+    return false
+  }
+  // Imgur's "removed" placeholder is exactly 161x81
+  return img.naturalWidth === 161 && img.naturalHeight === 81
+}
+
+function onLoad(event) {
+  const img = event.target
+
+  // Check if this is an Imgur "removed" placeholder image
+  if (isImgurRemovedPlaceholder(img)) {
+    error.value = true
+    emit('error')
+    return
+  }
+
   loaded.value = true
   emit('loaded')
 }
@@ -40,18 +66,22 @@ function revealNsfw() {
   showNsfw.value = true
 }
 
-const shouldBlur = props.nsfw && props.nsfwMode === 'blur' && !showNsfw.value
+const shouldBlur = computed(() => props.nsfw && props.nsfwMode === 'blur' && !showNsfw.value)
+const hasFrame = computed(() => props.frameStyle !== 'none')
 
 // When becoming active, emit loaded if already loaded (for auto-next)
-watch(() => props.active, (isActive) => {
-  if (isActive && loaded.value) {
-    emit('loaded')
+watch(
+  () => props.active,
+  (isActive) => {
+    if (isActive && loaded.value) {
+      emit('loaded')
+    }
   }
-})
+)
 </script>
 
 <template>
-  <div class="image-slide">
+  <div class="image-slide" :class="{ framed: hasFrame }">
     <div v-if="!loaded && !error" class="loading">
       <div class="spinner"></div>
     </div>
@@ -60,20 +90,11 @@ watch(() => props.active, (isActive) => {
       <span>Failed to load image</span>
     </div>
 
-    <img
-      v-show="loaded && !error"
-      :src="url"
-      :class="{ blur: shouldBlur }"
-      @load="onLoad"
-      @error="onError"
-      alt=""
-    />
+    <div v-show="loaded && !error" class="image-container" :class="[`frame-${frameStyle}`]">
+      <img :src="url" :class="{ blur: shouldBlur }" alt="" @load="onLoad" @error="onError" />
+    </div>
 
-    <div
-      v-if="nsfw && nsfwMode === 'blur' && !showNsfw"
-      class="nsfw-overlay"
-      @click="revealNsfw"
-    >
+    <div v-if="nsfw && nsfwMode === 'blur' && !showNsfw" class="nsfw-overlay" @click="revealNsfw">
       <span>NSFW - Tap to reveal</span>
     </div>
   </div>
@@ -91,14 +112,77 @@ watch(() => props.active, (isActive) => {
   overflow: hidden;
 }
 
-img {
+.image-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+/* No frame - container fills the slide */
+.frame-none {
   width: 100%;
   height: 100%;
+}
+
+/* Framed - container centers the image */
+.image-container:not(.frame-none) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Frame styles - uses --frame-color CSS variable */
+.frame-shadow img {
+  border: 2px solid var(--frame-color, #fff);
+  box-shadow:
+    8px 12px 20px rgba(0, 0, 0, 0.5),
+    15px 25px 50px rgba(0, 0, 0, 0.4),
+    25px 40px 80px rgba(0, 0, 0, 0.3);
+}
+
+.frame-shadow-soft img {
+  box-shadow:
+    0 0 40px var(--frame-color, #fff),
+    0 0 80px var(--frame-color, #fff),
+    0 0 120px var(--frame-color, #fff),
+    0 0 200px var(--frame-color, #fff);
+}
+
+.frame-mat img {
+  border: 12px solid var(--frame-color, #f5f5f5);
+  box-shadow:
+    8px 12px 20px rgba(0, 0, 0, 0.5),
+    15px 25px 50px rgba(0, 0, 0, 0.4),
+    25px 40px 80px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+  .frame-mat img {
+    border-width: 8px;
+  }
+}
+
+img {
   object-fit: contain;
   /* GPU acceleration to prevent tearing during slide transitions */
   transform: translateZ(0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+
+/* No frame - image fills container */
+.frame-none img {
+  width: 100%;
+  height: 100%;
+}
+
+/* Framed - image constrained to 90% of viewport, border hugs image */
+.image-container:not(.frame-none) img {
+  max-width: 90vw;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
 }
 
 img.blur {

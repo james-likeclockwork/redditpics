@@ -12,7 +12,7 @@ defineProps({
 </script>
 
 <template>
-  <div class="progress-bar" v-if="visible">
+  <div class="progress-bar" :class="{ visible }">
     <div class="progress-fill" :style="{ width: progress + '%' }"></div>
   </div>
 </template>
@@ -26,6 +26,12 @@ defineProps({
   height: 3px;
   background: rgba(255, 255, 255, 0.2);
   z-index: 100;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.progress-bar.visible {
+  opacity: 1;
 }
 
 .progress-fill {

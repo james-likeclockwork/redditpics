@@ -109,9 +109,7 @@ export function isValidRedgifsGifResponse(data: unknown): data is RedgifsGifResp
 /**
  * Safely extract children from Reddit listing
  */
-export function extractListingChildren<T>(
-  data: unknown
-): Array<{ kind: string; data: T }> {
+export function extractListingChildren<T>(data: unknown): Array<{ kind: string; data: T }> {
   if (!isValidRedditListing(data)) {
     return []
   }

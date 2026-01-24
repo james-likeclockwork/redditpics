@@ -21,7 +21,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['loaded', 'ended', 'error', 'galleryComplete'])
+const emit = defineEmits(['loaded', 'ended', 'error', 'galleryComplete', 'galleryIndexChange'])
 
 const videoRef = ref(null)
 const galleryRef = ref(null)
@@ -44,11 +44,17 @@ onUnmounted(() => {
   logger.slideUnmount(slideIndex.value)
 })
 
-// Loop videos when auto-next is disabled, otherwise use the loop setting
+// Loop videos based on auto-next settings
 const shouldLoop = computed(() => {
+  // If auto-next is disabled, always loop
   if (!props.settings.autoNext.enabled) {
     return true
   }
+  // "once" mode: don't loop so video ends and advances
+  if (props.settings.autoNext.videoMode === 'once') {
+    return false
+  }
+  // Other modes: use the loop setting
   return props.settings.video.loop
 })
 
@@ -66,6 +72,10 @@ function onError() {
 
 function onGalleryComplete() {
   emit('galleryComplete')
+}
+
+function onGalleryIndexChange(index) {
+  emit('galleryIndexChange', index)
 }
 
 // Gallery control methods
@@ -119,6 +129,7 @@ defineExpose({
       :active="active"
       :nsfw="isNsfw"
       :nsfw-mode="settings.content.nsfwMode"
+      :frame-style="settings.display.frameStyle"
       @loaded="onLoaded"
       @error="onError"
     />
@@ -134,6 +145,7 @@ defineExpose({
       :active="active"
       :nsfw="isNsfw"
       :nsfw-mode="settings.content.nsfwMode"
+      :frame-style="settings.display.frameStyle"
       @loaded="onLoaded"
       @ended="onEnded"
       @error="onError"
@@ -146,20 +158,23 @@ defineExpose({
       :active="active"
       :nsfw="isNsfw"
       :nsfw-mode="settings.content.nsfwMode"
+      :frame-style="settings.display.frameStyle"
       @loaded="onLoaded"
       @complete="onGalleryComplete"
+      @index-change="onGalleryIndexChange"
     />
 
     <RedgifSlide
       v-else-if="mediaType === 'redgif'"
-      ref="videoRef"
       :id="media.id"
+      ref="videoRef"
       :autoplay="settings.video.autoplay"
       :muted="settings.video.muted"
       :loop="shouldLoop"
       :active="active"
       :nsfw="isNsfw"
       :nsfw-mode="settings.content.nsfwMode"
+      :frame-style="settings.display.frameStyle"
       @loaded="onLoaded"
       @ended="onEnded"
       @error="onError"

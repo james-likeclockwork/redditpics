@@ -1,5 +1,19 @@
 <script setup>
 import { computed, ref } from 'vue'
+import {
+  X,
+  Menu,
+  Maximize2,
+  Minimize2,
+  Settings,
+  HelpCircle,
+  ChevronUp,
+  ChevronDown,
+  Play,
+  Pause,
+  ArrowUp,
+  ExternalLink
+} from 'lucide-vue-next'
 
 const props = defineProps({
   post: {
@@ -26,6 +40,10 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  userActive: {
+    type: Boolean,
+    default: true
+  },
   isFullscreen: {
     type: Boolean,
     default: false
@@ -40,7 +58,16 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['prev', 'next', 'togglePlay', 'openSettings', 'toggleControls', 'toggleFullscreen', 'changeSort', 'openHelp'])
+const emit = defineEmits([
+  'prev',
+  'next',
+  'togglePlay',
+  'openSettings',
+  'toggleControls',
+  'toggleFullscreen',
+  'changeSort',
+  'openHelp'
+])
 
 const sortMenuOpen = ref(false)
 
@@ -60,8 +87,8 @@ const timeOptions = [
   { value: 'all', label: 'All Time' }
 ]
 
-const currentSortOption = computed(() => sortOptions.find(s => s.value === props.sort))
-const currentTimeOption = computed(() => timeOptions.find(t => t.value === props.timeFilter))
+const currentSortOption = computed(() => sortOptions.find((s) => s.value === props.sort))
+const currentTimeOption = computed(() => timeOptions.find((t) => t.value === props.timeFilter))
 const needsTimeFilter = computed(() => props.sort === 'top' || props.sort === 'controversial')
 
 const sortDisplayLabel = computed(() => {
@@ -102,21 +129,21 @@ const permalink = computed(() => {
   }
   return null
 })
-
 </script>
 
 <template>
-  <!-- Toggle button always visible -->
+  <!-- Toggle button - visible when user is active -->
   <button
     class="toggle-controls-btn"
-    :class="{ hidden: showInfo }"
-    @click="emit('toggleControls')"
+    :class="{ visible: userActive }"
     :title="showInfo ? 'Hide controls (i)' : 'Show controls (i)'"
+    @click="emit('toggleControls')"
   >
-    {{ showInfo ? '✕' : '☰' }}
+    <X v-if="showInfo" :size="18" />
+    <Menu v-else :size="18" />
   </button>
 
-  <div class="controls" v-show="showInfo">
+  <div class="controls" :class="{ visible: showInfo && userActive }">
     <!-- Top bar - Post info only (top left) -->
     <div class="top-bar">
       <div class="post-info">
@@ -126,15 +153,9 @@ const permalink = computed(() => {
           <span class="divider">•</span>
           <span class="source">r/{{ subreddit }}</span>
           <span class="divider">•</span>
-          <span class="score">⬆ {{ score }}</span>
-          <a
-            v-if="permalink"
-            :href="permalink"
-            target="_blank"
-            rel="noopener"
-            class="reddit-link"
-          >
-            ↗
+          <span class="score"><ArrowUp :size="12" /> {{ score }}</span>
+          <a v-if="permalink" :href="permalink" target="_blank" rel="noopener" class="reddit-link">
+            <ExternalLink :size="12" />
           </a>
         </div>
       </div>
@@ -145,7 +166,7 @@ const permalink = computed(() => {
       <!-- Sort selector -->
       <div class="sort-selector" @mouseleave="closeSortMenu">
         <button class="sort-btn" @click="toggleSortMenu">
-          {{ sortDisplayLabel }} ▾
+          {{ sortDisplayLabel }} <ChevronDown :size="14" />
         </button>
         <div v-if="sortMenuOpen" class="sort-menu">
           <template v-for="opt in sortOptions" :key="opt.value">
@@ -179,30 +200,34 @@ const permalink = computed(() => {
         </div>
       </div>
 
-      <div class="position">
-        {{ currentIndex + 1 }} / {{ totalPosts }}
-      </div>
-      <button class="fullscreen-btn" @click="emit('toggleFullscreen')" :title="isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen (f)'">
-        {{ isFullscreen ? '⤓' : '⤢' }}
+      <div class="position">{{ currentIndex + 1 }} / {{ totalPosts }}</div>
+      <button
+        class="fullscreen-btn"
+        :title="isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen (f)'"
+        @click="emit('toggleFullscreen')"
+      >
+        <Minimize2 v-if="isFullscreen" :size="20" />
+        <Maximize2 v-else :size="20" />
       </button>
-      <button class="settings-btn" @click="emit('openSettings')">
-        ⚙
+      <button class="settings-btn" title="Settings" @click="emit('openSettings')">
+        <Settings :size="20" />
       </button>
-      <button class="help-btn" @click="emit('openHelp')" title="Help (?)">
-        ?
+      <button class="help-btn" title="Help (?)" @click="emit('openHelp')">
+        <HelpCircle :size="20" />
       </button>
     </div>
 
     <!-- Side controls (right side) -->
     <div class="side-controls">
       <button class="nav-zone nav-prev" @click="emit('prev')">
-        <span class="nav-icon">↑</span>
+        <ChevronUp :size="24" />
       </button>
       <button class="play-btn" @click="emit('togglePlay')">
-        <span :class="isPlaying ? 'icon-pause' : 'icon-play'">{{ isPlaying ? '⏸' : '▶' }}</span>
+        <Pause v-if="isPlaying" :size="28" />
+        <Play v-else :size="28" class="play-icon" />
       </button>
       <button class="nav-zone nav-next" @click="emit('next')">
-        <span class="nav-icon">↓</span>
+        <ChevronDown :size="24" />
       </button>
     </div>
   </div>
@@ -216,7 +241,7 @@ const permalink = computed(() => {
   width: 40px;
   height: 40px;
   border: none;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 50%;
   color: #fff;
   font-size: 18px;
@@ -225,14 +250,21 @@ const permalink = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  opacity: 0;
+  transition:
+    opacity 0.3s ease,
+    background 0.2s ease;
+  pointer-events: none;
+}
+
+.toggle-controls-btn.visible {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
 }
 
 .toggle-controls-btn:hover {
   background: rgba(0, 0, 0, 0.8);
-}
-
-.toggle-controls-btn.hidden {
-  background: rgba(255, 255, 255, 0.1);
 }
 
 .controls {
@@ -240,9 +272,15 @@ const permalink = computed(() => {
   inset: 0;
   pointer-events: none;
   z-index: 50;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
-.controls > * {
+.controls.visible {
+  opacity: 1;
+}
+
+.controls.visible > * {
   pointer-events: auto;
 }
 
@@ -295,6 +333,9 @@ const permalink = computed(() => {
   font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .sort-btn:hover {
@@ -420,19 +461,8 @@ const permalink = computed(() => {
   background: rgba(255, 255, 255, 0.25);
 }
 
-.icon-play,
-.icon-pause {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.icon-play {
-  transform: translate(2px, 0);
-}
-
-.icon-pause {
-  transform: translate(0, -1px);
+.play-icon {
+  transform: translateX(2px);
 }
 
 .post-info {
@@ -465,7 +495,15 @@ const permalink = computed(() => {
   opacity: 0.5;
 }
 
+.score {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .reddit-link {
+  display: inline-flex;
+  align-items: center;
   color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
   margin-left: 4px;

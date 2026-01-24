@@ -73,10 +73,20 @@ const viewerRef = ref(null)
 const isFullscreen = ref(false)
 const showInfoBeforeFullscreen = ref(true)
 const failedPostIds = ref(new Set())
+const userActive = ref(true)
+let inactivityTimer = null
 
 // Composables
 const { settings, reset: resetSettings } = useSettings()
-const { posts, loading, error, hasMore, fetchPosts, fetchMore, setTimeFilterChangeCallback, setNoSuitablePostsCallback } = useRedditFetcher()
+const {
+  posts,
+  loading,
+  error,
+  fetchPosts,
+  fetchMore,
+  setTimeFilterChangeCallback,
+  setNoSuitablePostsCallback
+} = useRedditFetcher()
 
 // Light/dark mode detection
 const isLight = computed(() => isLightColor(settings.display.backgroundColor))
@@ -95,12 +105,31 @@ setTimeFilterChangeCallback((newTimeFilter) => {
 
 // Handle no suitable posts found - redirect to homepage
 setNoSuitablePostsCallback((failedSubreddits) => {
-  alert(`No viewable media found in r/${failedSubreddits}. This subreddit may not have image/video content. Redirecting to homepage.`)
+  alert(
+    `No viewable media found in r/${failedSubreddits}. This subreddit may not have image/video content. Redirecting to homepage.`
+  )
   window.location.href = '/'
 })
 
 // Auto-next
 const autoNext = useAutoNext(() => {
+  // Check if we're on a gallery that needs internal advancement
+  const post = filteredPosts.value[currentIndex.value]
+  if (post?.type === 'gallery') {
+    const currentSlide = viewerRef.value?.slideRefs?.[currentIndex.value]
+    if (currentSlide?.isGallery?.()) {
+      const galleryIndex = currentSlide.getGalleryIndex()
+      const galleryTotal = currentSlide.getGalleryTotal()
+
+      if (galleryIndex < galleryTotal - 1) {
+        // More images in gallery - advance within gallery and restart timer
+        currentSlide.galleryNext()
+        autoNext.start(settings.autoNext.imageDelay)
+        return
+      }
+    }
+  }
+  // Default: advance to next post
   if (viewerRef.value) {
     viewerRef.value.next()
   }
@@ -123,7 +152,7 @@ const subredditDisplay = computed(() => {
 
 // Filter posts based on settings and failed loads
 const filteredPosts = computed(() => {
-  return posts.value.filter(post => {
+  return posts.value.filter((post) => {
     // Filter out failed posts
     const postId = post.post?.id || post.url
     if (failedPostIds.value.has(postId)) {
@@ -144,7 +173,10 @@ const filteredPosts = computed(() => {
 // Handle auto-next based on media type
 function handleMediaLoaded(index) {
   const post = filteredPosts.value[index]
-  logger.log('media', `[${index}] Media loaded, type: ${post?.type}, autoNext: ${settings.autoNext.enabled}, videoMode: ${settings.autoNext.videoMode}`)
+  logger.log(
+    'media',
+    `[${index}] Media loaded, type: ${post?.type}, autoNext: ${settings.autoNext.enabled}, videoMode: ${settings.autoNext.videoMode}`
+  )
 
   if (!settings.autoNext.enabled) return
   if (index !== currentIndex.value) return
@@ -154,13 +186,8 @@ function handleMediaLoaded(index) {
     logger.log('media', `[${index}] Starting image timer: ${settings.autoNext.imageDelay}ms`)
     autoNext.start(settings.autoNext.imageDelay)
   } else if (post.type === 'gallery') {
-    if (settings.autoNext.galleryMode === 'fixed') {
-      logger.log('media', `[${index}] Gallery fixed mode, starting timer`)
-      autoNext.start(settings.autoNext.imageDelay)
-    } else if (settings.autoNext.galleryMode === 'all') {
-      logger.log('media', `[${index}] Gallery all mode, starting gallery auto-advance`)
-      startGalleryAutoAdvance()
-    }
+    logger.log('media', `[${index}] Gallery starting timer: ${settings.autoNext.imageDelay}ms`)
+    autoNext.start(settings.autoNext.imageDelay)
   } else if (post.type === 'video' || post.type === 'redgif') {
     if (settings.autoNext.videoMode === 'skip') {
       logger.log('media', `[${index}] Video skip mode, advancing immediately`)
@@ -169,55 +196,21 @@ function handleMediaLoaded(index) {
       logger.log('media', `[${index}] Video fixed mode, starting timer`)
       autoNext.start(settings.autoNext.imageDelay)
     } else {
-      logger.log('media', `[${index}] Video wait mode, waiting for ended event`)
-    }
-  }
-}
-
-// Gallery auto-advance for 'all' mode
-let galleryTimer = null
-
-function startGalleryAutoAdvance() {
-  stopGalleryAutoAdvance()
-  galleryTimer = setTimeout(() => {
-    advanceGalleryOrNext()
-  }, settings.autoNext.imageDelay)
-}
-
-function stopGalleryAutoAdvance() {
-  if (galleryTimer) {
-    clearTimeout(galleryTimer)
-    galleryTimer = null
-  }
-}
-
-function advanceGalleryOrNext() {
-  if (!settings.autoNext.enabled) return
-  if (settings.autoNext.galleryMode !== 'all') return
-
-  const post = filteredPosts.value[currentIndex.value]
-  if (post?.type !== 'gallery') return
-
-  // Try to advance within gallery
-  const currentSlide = viewerRef.value?.slideRefs?.[currentIndex.value]
-  if (currentSlide?.isGallery?.()) {
-    const galleryIndex = currentSlide.getGalleryIndex()
-    const galleryTotal = currentSlide.getGalleryTotal()
-
-    if (galleryIndex < galleryTotal - 1) {
-      // More images in gallery - advance and restart timer
-      currentSlide.galleryNext()
-      startGalleryAutoAdvance()
-    } else {
-      // Last image - advance to next post
-      viewerRef.value?.next()
+      // "once" or "wait" mode - wait for ended event
+      logger.log(
+        'media',
+        `[${index}] Video ${settings.autoNext.videoMode} mode, waiting for ended event`
+      )
     }
   }
 }
 
 function handleMediaEnded(index) {
   const post = filteredPosts.value[index]
-  logger.log('media', `[${index}] Video ended, type: ${post?.type}, videoMode: ${settings.autoNext.videoMode}`)
+  logger.log(
+    'media',
+    `[${index}] Video ended, type: ${post?.type}, videoMode: ${settings.autoNext.videoMode}`
+  )
 
   if (!settings.autoNext.enabled) {
     logger.log('media', `[${index}] Auto-next disabled, not advancing`)
@@ -227,18 +220,32 @@ function handleMediaEnded(index) {
     logger.log('media', `[${index}] Index mismatch (current: ${currentIndex.value}), not advancing`)
     return
   }
-  if (settings.autoNext.videoMode === 'wait') {
-    logger.log('nav', `[${index}] Advancing to next (video ended in wait mode)`)
+  // "once" or "wait" mode - advance when video ends
+  if (settings.autoNext.videoMode === 'once' || settings.autoNext.videoMode === 'wait') {
+    logger.log(
+      'nav',
+      `[${index}] Advancing to next (video ended in ${settings.autoNext.videoMode} mode)`
+    )
     viewerRef.value?.next()
   }
 }
 
 function handleGalleryComplete(index) {
   if (index !== currentIndex.value) return
-  // Stop any running gallery timer
-  stopGalleryAutoAdvance()
   // Always advance to next post when gallery completes (user viewed all items)
   viewerRef.value?.next()
+}
+
+function handleGalleryIndexChange(postIndex, galleryIndex) {
+  // Reset timer when manually navigating within a gallery
+  if (postIndex !== currentIndex.value) return
+  if (!settings.autoNext.enabled) return
+
+  logger.log(
+    'media',
+    `[${postIndex}] Gallery manual navigation to image ${galleryIndex}, resetting timer`
+  )
+  autoNext.start(settings.autoNext.imageDelay)
 }
 
 function handleMediaError(index) {
@@ -263,7 +270,6 @@ function handleMediaError(index) {
 // Watch current index changes
 watch(currentIndex, () => {
   autoNext.stop()
-  stopGalleryAutoAdvance()
 })
 
 // Handle left/right keys based on media type
@@ -384,6 +390,33 @@ function toggleControls() {
   settings.display.showInfo = !settings.display.showInfo
 }
 
+// Inactivity tracking - hide controls after timeout
+function resetInactivityTimer() {
+  userActive.value = true
+  if (inactivityTimer) {
+    clearTimeout(inactivityTimer)
+  }
+  const timeout = settings.display.inactivityTimeout
+  if (timeout > 0) {
+    inactivityTimer = setTimeout(() => {
+      userActive.value = false
+    }, timeout)
+  }
+}
+
+// Throttled activity handler to avoid excessive calls on mousemove
+let lastActivityTime = 0
+const ACTIVITY_THROTTLE_MS = 100
+
+function handleUserActivity() {
+  const now = Date.now()
+  if (now - lastActivityTime < ACTIVITY_THROTTLE_MS) {
+    return
+  }
+  lastActivityTime = now
+  resetInactivityTimer()
+}
+
 function handleChangeSort({ sort, timeFilter }) {
   currentSort.value = sort
   currentTimeFilter.value = timeFilter || ''
@@ -409,17 +442,36 @@ onMounted(() => {
   }
   window.addEventListener('keydown', handleKeydown)
   document.addEventListener('fullscreenchange', handleFullscreenChange)
+
+  // Activity tracking for auto-hide controls
+  window.addEventListener('mousemove', handleUserActivity)
+  window.addEventListener('touchstart', handleUserActivity)
+  window.addEventListener('click', handleUserActivity)
+  resetInactivityTimer()
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
-  stopGalleryAutoAdvance()
+  window.removeEventListener('mousemove', handleUserActivity)
+  window.removeEventListener('touchstart', handleUserActivity)
+  window.removeEventListener('click', handleUserActivity)
+  if (inactivityTimer) {
+    clearTimeout(inactivityTimer)
+  }
 })
 </script>
 
 <template>
-  <div class="app" :class="{ light: isLight }" :style="{ '--bg-color': settings.display.backgroundColor, backgroundColor: settings.display.backgroundColor }">
+  <div
+    class="app"
+    :class="{ light: isLight }"
+    :style="{
+      '--bg-color': settings.display.backgroundColor,
+      '--frame-color': settings.display.frameColor,
+      backgroundColor: settings.display.backgroundColor
+    }"
+  >
     <!-- Homepage -->
     <HomePage v-if="isHomePage" />
 
@@ -440,20 +492,21 @@ onUnmounted(() => {
       <ErrorBoundary>
         <MediaViewer
           ref="viewerRef"
-          :posts="filteredPosts"
           v-model:current-index="currentIndex"
+          :posts="filteredPosts"
           :settings="settings"
           @need-more="fetchMore"
           @media-loaded="handleMediaLoaded"
           @media-ended="handleMediaEnded"
           @media-error="handleMediaError"
           @gallery-complete="handleGalleryComplete"
+          @gallery-index-change="handleGalleryIndexChange"
         />
       </ErrorBoundary>
 
       <ProgressBar
         :progress="autoNext.progress.value"
-        :visible="settings.display.showProgress && settings.autoNext.enabled"
+        :visible="settings.display.showProgress && settings.autoNext.enabled && userActive"
       />
 
       <Controls
@@ -463,6 +516,7 @@ onUnmounted(() => {
         :total-posts="filteredPosts.length"
         :is-playing="settings.autoNext.enabled"
         :show-info="settings.display.showInfo"
+        :user-active="userActive"
         :is-fullscreen="isFullscreen"
         :sort="currentSort"
         :time-filter="currentTimeFilter"
@@ -490,10 +544,7 @@ onUnmounted(() => {
     />
 
     <!-- Help modal -->
-    <HelpModal
-      :visible="helpVisible"
-      @close="helpVisible = false"
-    />
+    <HelpModal :visible="helpVisible" @close="helpVisible = false" />
   </div>
 </template>
 

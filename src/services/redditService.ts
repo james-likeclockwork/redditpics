@@ -42,9 +42,7 @@ function buildUrl(options: FetchPostsOptions): string {
 /**
  * Fetch posts from Reddit API with retry logic and validation
  */
-export async function fetchRedditPosts(
-  options: FetchPostsOptions
-): Promise<FetchPostsResult> {
+export async function fetchRedditPosts(options: FetchPostsOptions): Promise<FetchPostsResult> {
   const url = buildUrl(options)
 
   logger.fetchStart(url)

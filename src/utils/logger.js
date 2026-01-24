@@ -29,6 +29,7 @@ function formatTime() {
 function log(level, ...args) {
   if (!enabled) return
   const icon = LOG_LEVELS[level] || '📝'
+  // eslint-disable-next-line no-console
   console.log(`[${formatTime()}] ${icon} [${level.toUpperCase()}]`, ...args)
 }
 
@@ -55,23 +56,29 @@ if (typeof window !== 'undefined') {
   window.enableDebug = () => {
     enabled = true
     localStorage.setItem('redditp2-debug', 'true')
+    // eslint-disable-next-line no-console
     console.log('🔧 RedditP2 debug logging ENABLED. Refresh to see all logs.')
+    // eslint-disable-next-line no-console
     console.log('   Disable with: window.disableDebug()')
   }
 
   window.disableDebug = () => {
     enabled = false
     localStorage.setItem('redditp2-debug', 'false')
+    // eslint-disable-next-line no-console
     console.log('🔧 RedditP2 debug logging DISABLED')
   }
 
   window.debugStatus = () => {
+    // eslint-disable-next-line no-console
     console.log(`🔧 Debug logging: ${enabled ? 'ENABLED' : 'DISABLED'}`)
   }
 }
 
 export const logger = {
-  get enabled() { return enabled },
+  get enabled() {
+    return enabled
+  },
 
   // Fetching
   fetchStart: (url) => log('fetch', 'Fetching:', url),
@@ -80,7 +87,8 @@ export const logger = {
 
   // Navigation
   navTo: (index, total) => log('nav', `Navigate to ${index + 1}/${total}`),
-  navJump: (from, to) => log('nav', `Jump from ${from + 1} to ${to + 1} (delta: ${Math.abs(to - from)})`),
+  navJump: (from, to) =>
+    log('nav', `Jump from ${from + 1} to ${to + 1} (delta: ${Math.abs(to - from)})`),
 
   // Media loading
   mediaMount: (index, type, url) => log('media', `[${index}] Mount ${type}:`, url?.slice(0, 80)),
@@ -88,7 +96,8 @@ export const logger = {
   mediaError: (index, type, err) => log('error', `[${index}] Failed ${type}:`, err),
 
   // Virtualization
-  visibleRange: (start, end, current) => log('nav', `Visible range: ${start}-${end}, current: ${current}`),
+  visibleRange: (start, end, current) =>
+    log('nav', `Visible range: ${start}-${end}, current: ${current}`),
   slideMount: (index) => log('media', `[${index}] Slide mounted`),
   slideUnmount: (index) => log('media', `[${index}] Slide unmounted`),
 

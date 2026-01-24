@@ -24,7 +24,7 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/media\/redgifs/, ''),
         headers: {
-          'Referer': 'https://www.redgifs.com/'
+          Referer: 'https://www.redgifs.com/'
         }
       }
     }

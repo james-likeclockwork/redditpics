@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, onUnmounted, computed } from 'vue'
+import { Play, Pause, Volume2, VolumeX } from 'lucide-vue-next'
 
 const props = defineProps({
   url: {
@@ -33,10 +34,16 @@ const props = defineProps({
   nsfwMode: {
     type: String,
     default: 'show'
+  },
+  frameStyle: {
+    type: String,
+    default: 'none'
   }
 })
 
 const emit = defineEmits(['loaded', 'ended', 'error', 'timeupdate'])
+
+const hasFrame = computed(() => props.frameStyle !== 'none')
 
 const videoRef = ref(null)
 const loaded = ref(false)
@@ -48,12 +55,15 @@ const duration = ref(0)
 const showNsfw = ref(false)
 
 // Sync muted state when prop changes (e.g., from keyboard shortcut)
-watch(() => props.muted, (newVal) => {
-  isMuted.value = newVal
-  if (videoRef.value) {
-    videoRef.value.muted = newVal
+watch(
+  () => props.muted,
+  (newVal) => {
+    isMuted.value = newVal
+    if (videoRef.value) {
+      videoRef.value.muted = newVal
+    }
   }
-})
+)
 
 const progress = computed(() => {
   if (duration.value === 0) return 0
@@ -141,23 +151,26 @@ function revealNsfw() {
 }
 
 // Watch active state
-watch(() => props.active, (isActive) => {
-  if (isActive) {
-    // Reset to start when becoming active
-    if (videoRef.value) {
-      videoRef.value.currentTime = 0
-    }
-    if (props.autoplay) {
-      play()
-    }
-  } else {
-    pause()
-    // Reset to start when leaving
-    if (videoRef.value) {
-      videoRef.value.currentTime = 0
+watch(
+  () => props.active,
+  (isActive) => {
+    if (isActive) {
+      // Reset to start when becoming active
+      if (videoRef.value) {
+        videoRef.value.currentTime = 0
+      }
+      if (props.autoplay) {
+        play()
+      }
+    } else {
+      pause()
+      // Reset to start when leaving
+      if (videoRef.value) {
+        videoRef.value.currentTime = 0
+      }
     }
   }
-})
+)
 
 function seekRelative(seconds) {
   if (videoRef.value) {
@@ -175,7 +188,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="video-slide" @click="togglePlay">
+  <div class="video-slide" :class="{ framed: hasFrame }" @click="togglePlay">
     <div v-if="!loaded && !error" class="loading">
       <div class="spinner"></div>
     </div>
@@ -184,23 +197,24 @@ onUnmounted(() => {
       <span>Failed to load video</span>
     </div>
 
-    <video
-      ref="videoRef"
-      v-show="loaded && !error"
-      :src="url"
-      :muted="isMuted"
-      :loop="loop"
-      :class="{ blur: shouldBlur }"
-      playsinline
-      preload="auto"
-      @canplay="onCanPlay"
-      @loadeddata="onLoadedData"
-      @error="onError"
-      @ended="onEnded"
-      @timeupdate="onTimeUpdate"
-      @play="playing = true"
-      @pause="playing = false"
-    />
+    <div v-show="loaded && !error" class="video-container" :class="[`frame-${frameStyle}`]">
+      <video
+        ref="videoRef"
+        :src="url"
+        :muted="isMuted"
+        :loop="loop"
+        :class="{ blur: shouldBlur }"
+        playsinline
+        preload="auto"
+        @canplay="onCanPlay"
+        @loadeddata="onLoadedData"
+        @error="onError"
+        @ended="onEnded"
+        @timeupdate="onTimeUpdate"
+        @play="playing = true"
+        @pause="playing = false"
+      />
+    </div>
 
     <div
       v-if="nsfw && nsfwMode === 'blur' && !showNsfw"
@@ -212,28 +226,28 @@ onUnmounted(() => {
 
     <!-- Video controls overlay -->
     <div v-if="loaded && !error" class="video-controls" @click.stop>
-      <div class="progress-bar" @click="e => seek((e.offsetX / e.target.clientWidth) * 100)">
+      <div class="progress-bar" @click="(e) => seek((e.offsetX / e.target.clientWidth) * 100)">
         <div class="progress-fill" :style="{ width: progress + '%' }"></div>
       </div>
 
       <div class="controls-row">
         <button class="control-btn" @click="togglePlay">
-          {{ playing ? '⏸' : '▶' }}
+          <Pause v-if="playing" :size="18" />
+          <Play v-else :size="18" />
         </button>
 
-        <span class="time">
-          {{ Math.floor(currentTime) }}s / {{ Math.floor(duration) }}s
-        </span>
+        <span class="time"> {{ Math.floor(currentTime) }}s / {{ Math.floor(duration) }}s </span>
 
         <button class="control-btn" @click="toggleMute">
-          {{ isMuted ? '🔇' : '🔊' }}
+          <VolumeX v-if="isMuted" :size="18" />
+          <Volume2 v-else :size="18" />
         </button>
       </div>
     </div>
 
     <!-- Play indicator -->
     <div v-if="loaded && !playing" class="play-indicator">
-      <span>▶</span>
+      <Play :size="32" />
     </div>
   </div>
 </template>
@@ -250,14 +264,77 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-video {
+.video-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+/* No frame - container fills the slide */
+.frame-none {
   width: 100%;
   height: 100%;
+}
+
+/* Framed - container centers the video */
+.video-container:not(.frame-none) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Frame styles - uses --frame-color CSS variable */
+.frame-shadow video {
+  border: 2px solid var(--frame-color, #fff);
+  box-shadow:
+    8px 12px 20px rgba(0, 0, 0, 0.5),
+    15px 25px 50px rgba(0, 0, 0, 0.4),
+    25px 40px 80px rgba(0, 0, 0, 0.3);
+}
+
+.frame-shadow-soft video {
+  box-shadow:
+    0 0 40px var(--frame-color, #fff),
+    0 0 80px var(--frame-color, #fff),
+    0 0 120px var(--frame-color, #fff),
+    0 0 200px var(--frame-color, #fff);
+}
+
+.frame-mat video {
+  border: 12px solid var(--frame-color, #f5f5f5);
+  box-shadow:
+    8px 12px 20px rgba(0, 0, 0, 0.5),
+    15px 25px 50px rgba(0, 0, 0, 0.4),
+    25px 40px 80px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+  .frame-mat video {
+    border-width: 8px;
+  }
+}
+
+video {
   object-fit: contain;
   /* GPU acceleration to prevent tearing during slide transitions */
   transform: translateZ(0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+
+/* No frame - video fills container */
+.frame-none video {
+  width: 100%;
+  height: 100%;
+}
+
+/* Framed - video constrained to 90% of viewport, border hugs video */
+.video-container:not(.frame-none) video {
+  max-width: 90vw;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
 }
 
 video.blur {
@@ -363,14 +440,12 @@ video.blur {
   pointer-events: none;
 }
 
-.play-indicator span {
+.play-indicator :deep(svg) {
   width: 64px;
   height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 16px;
   background: rgba(0, 0, 0, 0.6);
   border-radius: 50%;
-  font-size: 24px;
+  color: #fff;
 }
 </style>

@@ -38,7 +38,14 @@ onErrorCaptured((error, instance, info) => {
     <template v-if="hasError">
       <div class="error-container">
         <div class="error-icon">
-          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            viewBox="0 0 24 24"
+            width="48"
+            height="48"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -46,9 +53,7 @@ onErrorCaptured((error, instance, info) => {
         </div>
         <h2 class="error-title">Something went wrong</h2>
         <p class="error-message">{{ errorMessage }}</p>
-        <button class="retry-button" @click="handleRetry">
-          Try Again
-        </button>
+        <button class="retry-button" @click="handleRetry">Try Again</button>
         <p v-if="errorDetails" class="error-details">
           {{ errorDetails }}
         </p>
