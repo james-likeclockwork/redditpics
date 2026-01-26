@@ -113,6 +113,9 @@ async function fetchPreview(index, cachedPostId = null) {
     const children = data?.data?.children || []
 
     for (const child of children) {
+      // Skip NSFW posts - only show SFW thumbnails on homepage
+      if (child.data?.over_18) continue
+
       const media = extractMedia(child)
       if (media && (media.type === 'image' || media.type === 'gallery')) {
         const postId = child.data?.id
