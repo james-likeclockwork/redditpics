@@ -71,12 +71,14 @@ function preloadMedia(post, index) {
   if (post.type === 'image' && post.url) {
     logger.preloadStart(index, post.url)
     const img = new Image()
+    img.fetchPriority = 'low'
     img.src = post.url
   } else if (post.type === 'gallery' && post.items) {
     logger.preloadStart(index, `gallery with ${post.items.length} items`)
     // Preload first 3 images of gallery
     post.items.slice(0, 3).forEach((item) => {
       const img = new Image()
+      img.fetchPriority = 'low'
       img.src = item.url
     })
   }
@@ -115,24 +117,13 @@ watch(
       preloadTimeout = null
     }
 
-    // Clean up slides that are now far away (more than 5 positions)
-    const cleanupDistance = 5
-    Object.keys(slideRefs.value).forEach((key) => {
-      const idx = parseInt(key)
-      if (Math.abs(idx - newIndex) > cleanupDistance) {
-        delete slideRefs.value[idx]
-      }
-    })
-
-    // Clear preload cache entries for distant posts to allow re-preloading if user goes back
-    const keysToRemove = []
-    preloadCache.forEach((key) => {
-      // Can't easily map cache keys to indices, so just limit cache size
-      if (preloadCache.size > 20) {
-        keysToRemove.push(key)
-      }
-    })
-    keysToRemove.slice(0, preloadCache.size - 20).forEach((key) => preloadCache.delete(key))
+    // Slides outside the visible range are already unmounted by the v-for, which
+    // releases their media (see VideoSlide onUnmounted). We just trim the preload
+    // cache so revisiting a post can re-warm it.
+    if (preloadCache.size > 20) {
+      const keysToRemove = [...preloadCache].slice(0, preloadCache.size - 20)
+      keysToRemove.forEach((key) => preloadCache.delete(key))
+    }
   }
 )
 
@@ -426,6 +417,7 @@ defineExpose({ next, prev, goToIndex, galleryNext, galleryPrev, slideRefs, seekV
           :ref="
             (el) => {
               if (el) slideRefs[post.virtualIndex] = el
+              else delete slideRefs[post.virtualIndex]
             }
           "
           :media="post"

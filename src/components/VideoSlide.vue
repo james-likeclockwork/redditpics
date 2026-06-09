@@ -49,6 +49,10 @@ const emit = defineEmits(['loaded', 'ended', 'error', 'timeupdate'])
 
 const hasFrame = computed(() => props.frameStyle !== 'none')
 
+// Active slide fully buffers; neighbors only grab metadata so they don't
+// compete with the active video for bandwidth.
+const preloadMode = computed(() => (props.active ? 'auto' : 'metadata'))
+
 const videoRef = ref(null)
 const loaded = ref(false)
 const error = ref(false)
@@ -188,6 +192,13 @@ defineExpose({ play, pause, togglePlay, toggleMute, seek, seekRelative })
 
 onUnmounted(() => {
   pause()
+  // Release the media so scrolling past frees its buffer/decoder and aborts
+  // any in-flight download. Only on unmount — the 1-behind neighbor stays
+  // mounted for instant back-navigation.
+  if (videoRef.value) {
+    videoRef.value.removeAttribute('src')
+    videoRef.value.load()
+  }
 })
 </script>
 
@@ -209,7 +220,8 @@ onUnmounted(() => {
         :loop="loop"
         :class="{ blur: shouldBlur }"
         playsinline
-        preload="auto"
+        :preload="preloadMode"
+        :fetchpriority="active ? 'high' : 'low'"
         @canplay="onCanPlay"
         @loadeddata="onLoadedData"
         @error="onError"

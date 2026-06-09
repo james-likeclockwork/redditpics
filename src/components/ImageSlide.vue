@@ -91,7 +91,15 @@ watch(
     </div>
 
     <div v-show="loaded && !error" class="image-container" :class="[`frame-${frameStyle}`]">
-      <img :src="url" :class="{ blur: shouldBlur }" alt="" @load="onLoad" @error="onError" />
+      <img
+        :src="url"
+        :class="{ blur: shouldBlur }"
+        :fetchpriority="active ? 'high' : 'low'"
+        decoding="async"
+        alt=""
+        @load="onLoad"
+        @error="onError"
+      />
     </div>
 
     <div v-if="nsfw && nsfwMode === 'blur' && !showNsfw" class="nsfw-overlay" @click="revealNsfw">
