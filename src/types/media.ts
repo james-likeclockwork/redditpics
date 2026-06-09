@@ -44,8 +44,10 @@ export interface RedgifMediaItem extends BaseMediaItem {
 
 export type MediaItem = ImageMediaItem | VideoMediaItem | GalleryMediaItem | RedgifMediaItem
 
-// Extended media item with virtual index for rendering
-export interface MediaItemWithIndex extends MediaItem {
+// Extended media item with virtual index for rendering.
+// MediaItem is a union, so this must be an intersection type rather than an
+// interface (an interface cannot `extends` a union).
+export type MediaItemWithIndex = MediaItem & {
   virtualIndex?: number
 }
 

@@ -200,7 +200,7 @@ describe('MediaSlide', () => {
 
     const wrapper = mount(MediaSlide, {
       props: {
-        media: media as MediaItem,
+        media: media as unknown as MediaItem,
         active: true,
         settings: defaultSettings
       }

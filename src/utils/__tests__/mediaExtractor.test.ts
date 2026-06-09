@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { unescapeHtml, extractMedia, extractAllMedia } from '../mediaExtractor'
 import type { RedditPost } from '../../types/reddit'
+import type { MediaItem } from '../../types/media'
+
+// Narrow the MediaItem union to the members that carry a `url` (image/video).
+type UrlMedia = Extract<MediaItem, { url: string }>
 
 describe('unescapeHtml', () => {
   it('handles null and undefined', () => {
@@ -172,7 +176,7 @@ describe('extractMedia', () => {
       })
       const result = extractMedia(post)
       expect(result?.type).toBe('video')
-      expect(result?.url).toBe('https://v.redd.it/parent123/DASH_480.mp4')
+      expect((result as UrlMedia).url).toBe('https://v.redd.it/parent123/DASH_480.mp4')
     })
   })
 
@@ -243,7 +247,7 @@ describe('extractMedia', () => {
       })
       const result = extractMedia(post)
       expect(result?.type).toBe('video')
-      expect(result?.url).toBe('https://i.imgur.com/abc123.mp4')
+      expect((result as UrlMedia).url).toBe('https://i.imgur.com/abc123.mp4')
     })
 
     it('handles direct imgur links', () => {
@@ -262,7 +266,7 @@ describe('extractMedia', () => {
       })
       const result = extractMedia(post)
       expect(result?.type).toBe('image')
-      expect(result?.url).toBe('https://i.imgur.com/abc123.jpg')
+      expect((result as UrlMedia).url).toBe('https://i.imgur.com/abc123.jpg')
     })
 
     it('skips imgur albums', () => {
@@ -384,7 +388,7 @@ describe('extractMedia', () => {
       const result = extractMedia(post)
       expect(result?.type).toBe('image')
       // Note: HTML entities should be unescaped
-      expect(result?.url).toBe('https://preview.redd.it/abc123.jpg?width=1920&format=pjpg')
+      expect((result as UrlMedia).url).toBe('https://preview.redd.it/abc123.jpg?width=1920&format=pjpg')
     })
 
     it('skips article links even with large preview', () => {

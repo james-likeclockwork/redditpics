@@ -1,0 +1,7 @@
+services:
+  redditpics:
+    build: .
+    container_name: redditpics
+    restart: unless-stopped
+    ports:
+      - "8080:80"

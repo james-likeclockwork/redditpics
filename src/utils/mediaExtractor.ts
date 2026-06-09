@@ -99,7 +99,7 @@ export function extractMedia(post: { data?: RedditPost } | RedditPost): MediaIte
   if (data.is_gallery && data.gallery_data && data.media_metadata) {
     const items = data.gallery_data.items || []
     const images: GalleryItem[] = items
-      .map((item) => {
+      .map((item): GalleryItem | null => {
         const meta = data.media_metadata?.[item.media_id]
         if (!meta) return null
 
