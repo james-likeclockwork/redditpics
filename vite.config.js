@@ -11,7 +11,7 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/reddit/, ''),
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; RedditP2/1.0)'
+          'User-Agent': 'web:co.za.jameshome.pics:v1.0 (+https://pics.jameshome.co.za)'
         }
       },
       '/api/redgifs': {
