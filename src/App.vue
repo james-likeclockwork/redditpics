@@ -173,35 +173,38 @@ const filteredPosts = computed(() => {
 // Handle auto-next based on media type
 function handleMediaLoaded(index) {
   const post = filteredPosts.value[index]
+  const videoMode = settings.autoNext.videoMode
   logger.log(
     'media',
-    `[${index}] Media loaded, type: ${post?.type}, autoNext: ${settings.autoNext.enabled}, videoMode: ${settings.autoNext.videoMode}`
+    `[${index}] Media loaded, type: ${post?.type}, autoNext: ${settings.autoNext.enabled}, videoMode: ${videoMode}`
   )
 
   if (!settings.autoNext.enabled) return
   if (index !== currentIndex.value) return
   if (!post) return
 
-  if (post.type === 'image') {
+  // For videos and redgifs, handle based on video mode
+  if (post.type === 'video' || post.type === 'redgif') {
+    if (videoMode === 'skip') {
+      logger.log('media', `[${index}] Video skip mode, advancing immediately`)
+      viewerRef.value?.next()
+    } else if (videoMode === 'fixed') {
+      logger.log('media', `[${index}] Video fixed mode, starting timer: ${settings.autoNext.imageDelay}ms`)
+      autoNext.start(settings.autoNext.imageDelay)
+    } else {
+      // "once" or "wait" mode - wait for ended event, do NOT start timer
+      logger.log('media', `[${index}] Video ${videoMode} mode, waiting for ended event (no timer)`)
+      autoNext.stop() // Explicitly stop any lingering timer
+    }
+  } else if (post.type === 'image') {
     logger.log('media', `[${index}] Starting image timer: ${settings.autoNext.imageDelay}ms`)
     autoNext.start(settings.autoNext.imageDelay)
   } else if (post.type === 'gallery') {
     logger.log('media', `[${index}] Gallery starting timer: ${settings.autoNext.imageDelay}ms`)
     autoNext.start(settings.autoNext.imageDelay)
-  } else if (post.type === 'video' || post.type === 'redgif') {
-    if (settings.autoNext.videoMode === 'skip') {
-      logger.log('media', `[${index}] Video skip mode, advancing immediately`)
-      viewerRef.value?.next()
-    } else if (settings.autoNext.videoMode === 'fixed') {
-      logger.log('media', `[${index}] Video fixed mode, starting timer`)
-      autoNext.start(settings.autoNext.imageDelay)
-    } else {
-      // "once" or "wait" mode - wait for ended event
-      logger.log(
-        'media',
-        `[${index}] Video ${settings.autoNext.videoMode} mode, waiting for ended event`
-      )
-    }
+  } else {
+    // Unknown type - log it for debugging
+    logger.log('media', `[${index}] Unknown media type: ${post.type}, not starting timer`)
   }
 }
 
